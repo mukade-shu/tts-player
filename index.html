@@ -84,9 +84,10 @@
     .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
     .btn-secondary:hover { border-color: var(--text-muted); }
 
-    .btn-icon { background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; transition: all 0.15s; cursor: pointer; }
-    .btn-icon:hover { border-color: var(--text-muted); }
-    .btn-icon.play-pause { background: var(--accent); border-color: var(--accent); width: 52px; height: 52px; font-size: 20px; }
+    .btn-icon { background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: 8px; height: 36px; padding: 0 10px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 500; flex-shrink: 0; transition: all 0.15s; cursor: pointer; white-space: nowrap; gap: 3px; }
+    .btn-icon:hover { border-color: var(--text-muted); color: var(--text); }
+    .btn-icon .icon { font-size: 13px; }
+    .btn-icon.play-pause { background: var(--accent); border-color: var(--accent); border-radius: 50%; width: 52px; height: 52px; padding: 0; font-size: 20px; }
     .btn-icon.play-pause:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
 
     .divider { display: flex; align-items: center; gap: 12px; color: var(--text-muted); font-size: 12px; }
@@ -208,11 +209,12 @@
         </div>
 
         <div class="controls">
-          <button class="btn-icon" id="back15" title="−15s" aria-label="Back 15 seconds">⏮</button>
-          <button class="btn-icon" id="back5"  title="−5s"  aria-label="Back 5 seconds">⏪</button>
+          <button class="btn-icon" id="back120" aria-label="Back 2 minutes"><span class="icon">⏪</span>2min</button>
+          <button class="btn-icon" id="back60"  aria-label="Back 1 minute"><span class="icon">⏪</span>1min</button>
+          <button class="btn-icon" id="back30"  aria-label="Back 30 seconds"><span class="icon">⏪</span>30s</button>
           <button class="btn-icon play-pause" id="play-btn" aria-label="Play">▶</button>
-          <button class="btn-icon" id="fwd5"   title="+5s"  aria-label="Forward 5 seconds">⏩</button>
-          <button class="btn-icon" id="fwd15"  title="+15s" aria-label="Forward 15 seconds">⏭</button>
+          <button class="btn-icon" id="fwd15"   aria-label="Forward 15 seconds">15s<span class="icon">⏩</span></button>
+          <button class="btn-icon" id="fwd30"   aria-label="Forward 30 seconds">30s<span class="icon">⏩</span></button>
         </div>
 
         <div class="speed-row">
@@ -235,8 +237,8 @@
   <!-- Keyboard shortcuts -->
   <div class="shortcuts" aria-label="Keyboard shortcuts">
     <div class="shortcut"><kbd>Space</kbd> Play / Pause</div>
-    <div class="shortcut"><kbd>←</kbd> −5s</div>
-    <div class="shortcut"><kbd>→</kbd> +5s</div>
+    <div class="shortcut"><kbd>←</kbd> −30s</div>
+    <div class="shortcut"><kbd>→</kbd> +15s</div>
     <div class="shortcut"><kbd>↑</kbd> Speed +</div>
     <div class="shortcut"><kbd>↓</kbd> Speed −</div>
     <div class="shortcut"><kbd>D</kbd> Download</div>
@@ -364,10 +366,11 @@
   }
 
   playBtn.addEventListener('click', togglePlay);
-  document.getElementById('back15').addEventListener('click', () => seekBy(-15));
-  document.getElementById('back5').addEventListener('click',  () => seekBy(-5));
-  document.getElementById('fwd5').addEventListener('click',   () => seekBy(5));
-  document.getElementById('fwd15').addEventListener('click',  () => seekBy(15));
+  document.getElementById('back120').addEventListener('click', () => seekBy(-120));
+  document.getElementById('back60').addEventListener('click',  () => seekBy(-60));
+  document.getElementById('back30').addEventListener('click',  () => seekBy(-30));
+  document.getElementById('fwd15').addEventListener('click',   () => seekBy(15));
+  document.getElementById('fwd30').addEventListener('click',   () => seekBy(30));
 
   // ── Open local file ──────────────────────────────────────────
   document.getElementById('open-file-btn').addEventListener('click', () => fileInput.click());
@@ -470,11 +473,11 @@
         break;
       case 'ArrowLeft':
         e.preventDefault();
-        seekBy(-5);
+        seekBy(-30);
         break;
       case 'ArrowRight':
         e.preventDefault();
-        seekBy(5);
+        seekBy(15);
         break;
       case 'ArrowUp':
         e.preventDefault();
