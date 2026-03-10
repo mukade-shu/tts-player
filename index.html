@@ -346,6 +346,14 @@
   const fileNameEl  = document.getElementById('file-name');
   const libraryList = document.getElementById('library-list');
 
+  // ── Config ────────────────────────────────────────────────
+  const R2_BASE = 'https://pub-4b7fc72b39854d4fa39fc78a9d0bd6e9.r2.dev';
+
+  function resolveAudioUrl(filenameOrUrl) {
+    if (filenameOrUrl.startsWith('http') || filenameOrUrl.startsWith('blob:')) return filenameOrUrl;
+    return R2_BASE + '/' + filenameOrUrl;
+  }
+
   // ── State ─────────────────────────────────────────────────
   const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
   let speedIdx        = 2;
@@ -430,7 +438,7 @@
         li.addEventListener('click', () => {
           currentFilename = item.filename;
           currentBlob = null;
-          loadAudio(item.filename, item.title || item.filename);
+          loadAudio(resolveAudioUrl(item.url || item.filename), item.title || item.filename);
           setActiveLibItem(li, icon);
         });
 
@@ -464,7 +472,7 @@
     if (!src) return;
     const title = src.replace(/^.*\//, '').replace(/\.mp3$/i, '').replace(/_/g, ' ');
     currentFilename = src;
-    loadAudio(src, title);
+    loadAudio(resolveAudioUrl(src), title);
   }
 
   // ── Status ────────────────────────────────────────────────
