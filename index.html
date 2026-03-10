@@ -16,6 +16,7 @@
       --accent-hover: #409cff;
       --text: #f5f5f7;
       --text-muted: #8e8e93;
+      --red: #ff453a;
     }
 
     body {
@@ -24,111 +25,115 @@
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       font-size: 14px;
       min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 32px 16px;
     }
 
-    .app { width: 100%; max-width: 680px; display: flex; flex-direction: column; gap: 16px; }
+    /* Login */
+    #login-screen { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 100; }
+    #login-screen.hidden { display: none; }
+    .login-box { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 32px; width: 320px; display: flex; flex-direction: column; gap: 16px; text-align: center; }
+    .login-box h2 { font-size: 20px; font-weight: 600; }
+    .login-box p { font-size: 13px; color: var(--text-muted); }
+    .login-error { font-size: 12px; color: var(--red); min-height: 16px; }
+
+    /* App */
+    #app { display: flex; flex-direction: column; align-items: center; padding: 32px 16px; }
+    #app.hidden { display: none; }
+    .app-inner { width: 100%; max-width: 680px; display: flex; flex-direction: column; gap: 16px; }
 
     h1 { font-size: 18px; font-weight: 600; letter-spacing: -0.3px; }
+    .header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .header-actions { display: flex; gap: 8px; }
 
-    .header { display: flex; align-items: center; justify-content: space-between; }
-
-    .settings-toggle {
-      background: none;
-      border: 1px solid var(--border);
-      color: var(--text-muted);
-      border-radius: 8px;
-      padding: 6px 12px;
-      cursor: pointer;
-      font-size: 12px;
-      transition: all 0.15s;
-    }
-    .settings-toggle:hover { color: var(--text); border-color: var(--text-muted); }
-
-    .settings-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: none; }
-    .settings-panel.open { display: block; }
-
-    label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 6px; font-weight: 500; }
-
-    input[type="text"], input[type="password"], textarea, select {
-      width: 100%;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      color: var(--text);
-      padding: 10px 12px;
-      font-size: 14px;
-      font-family: inherit;
-      outline: none;
-      transition: border-color 0.15s;
-    }
-    input[type="text"]:focus, input[type="password"]:focus, textarea:focus, select:focus { border-color: var(--accent); }
-    select option { background: var(--surface2); }
-
+    /* Cards */
     .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
-
     .card-title { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
 
-    textarea { resize: vertical; min-height: 120px; line-height: 1.5; }
+    /* Inputs */
+    label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 6px; font-weight: 500; }
+    input[type="text"], input[type="password"], textarea, select { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 10px 12px; font-size: 14px; font-family: inherit; outline: none; transition: border-color 0.15s; }
+    input[type="text"]:focus, input[type="password"]:focus, textarea:focus, select:focus { border-color: var(--accent); }
+    select option { background: var(--surface2); }
+    textarea { resize: vertical; min-height: 100px; line-height: 1.5; }
+    input[type="file"] { display: none; }
 
-    .row { display: flex; gap: 10px; }
-    .row .field { flex: 1; }
-
+    /* Buttons */
     .btn { border: none; border-radius: 8px; padding: 10px 18px; font-size: 14px; font-weight: 500; cursor: pointer; font-family: inherit; transition: all 0.15s; white-space: nowrap; display: flex; align-items: center; justify-content: center; gap: 8px; }
     .btn-primary { background: var(--accent); color: #fff; }
     .btn-primary:hover { background: var(--accent-hover); }
     .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
     .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
     .btn-secondary:hover { border-color: var(--text-muted); }
+    .btn-ghost { background: none; border: 1px solid var(--border); color: var(--text-muted); border-radius: 8px; padding: 6px 12px; cursor: pointer; font-size: 12px; font-family: inherit; transition: all 0.15s; }
+    .btn-ghost:hover { color: var(--text); border-color: var(--text-muted); }
 
-    .btn-icon { background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: 8px; height: 36px; padding: 0 10px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 500; flex-shrink: 0; transition: all 0.15s; cursor: pointer; white-space: nowrap; gap: 3px; }
-    .btn-icon:hover { border-color: var(--text-muted); color: var(--text); }
-    .btn-icon .icon { font-size: 13px; }
-    .btn-icon.play-pause { background: var(--accent); border-color: var(--accent); border-radius: 50%; width: 52px; height: 52px; padding: 0; font-size: 20px; }
-    .btn-icon.play-pause:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+    /* Row */
+    .row { display: flex; gap: 10px; }
+    .row .field { flex: 1; }
 
+    /* Settings panel */
+    .settings-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: none; flex-direction: column; gap: 12px; }
+    .settings-panel.open { display: flex; }
+
+    /* Library */
+    .library-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; display: none; flex-direction: column; overflow: hidden; }
+    .library-panel.open { display: flex; }
+    .library-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--border); }
+    .library-header span { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .library-list { list-style: none; max-height: 280px; overflow-y: auto; }
+    .library-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.1s; }
+    .library-item:last-child { border-bottom: none; }
+    .library-item:hover { background: var(--surface2); }
+    .library-item.active { background: #1a2a3a; }
+    .lib-info { flex: 1; min-width: 0; }
+    .lib-title { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .lib-date { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+    .lib-play { font-size: 16px; color: var(--text-muted); flex-shrink: 0; }
+    .library-item.active .lib-play { color: var(--accent); }
+    .library-empty { padding: 24px 16px; text-align: center; color: var(--text-muted); font-size: 13px; list-style: none; }
+
+    /* Divider */
     .divider { display: flex; align-items: center; gap: 12px; color: var(--text-muted); font-size: 12px; }
     .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 
+    /* File open */
     .file-open-area { display: flex; align-items: center; gap: 10px; }
     #file-name { flex: 1; color: var(--text-muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    input[type="file"] { display: none; }
 
+    /* Player */
     .player-hidden { display: none; }
-
     .waveform-bar { display: flex; align-items: center; gap: 10px; }
     .time { font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; min-width: 38px; }
     .time.end { text-align: right; }
-
     input[type="range"] { flex: 1; -webkit-appearance: none; height: 4px; border-radius: 2px; background: var(--border); outline: none; cursor: pointer; }
     input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); cursor: pointer; }
-
-    .controls { display: flex; align-items: center; justify-content: center; gap: 12px; }
-
+    .controls { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }
+    .btn-icon { background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: 8px; height: 36px; padding: 0 10px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 500; flex-shrink: 0; transition: all 0.15s; cursor: pointer; white-space: nowrap; gap: 3px; }
+    .btn-icon:hover { border-color: var(--text-muted); }
+    .btn-icon .icon { font-size: 13px; }
+    .btn-icon.play-pause { background: var(--accent); border-color: var(--accent); border-radius: 50%; width: 52px; height: 52px; padding: 0; font-size: 20px; }
+    .btn-icon.play-pause:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
     .speed-row { display: flex; align-items: center; gap: 8px; }
     .speed-label { font-size: 12px; color: var(--text-muted); min-width: 42px; }
     .speed-pills { display: flex; gap: 6px; flex-wrap: wrap; }
     .speed-pill { background: var(--surface2); border: 1px solid var(--border); color: var(--text-muted); border-radius: 6px; padding: 4px 10px; font-size: 12px; cursor: pointer; transition: all 0.15s; }
     .speed-pill:hover { color: var(--text); border-color: var(--text-muted); }
     .speed-pill.active { background: var(--accent); border-color: var(--accent); color: #fff; }
-
     .volume-row { display: flex; align-items: center; gap: 8px; }
     .volume-icon { font-size: 16px; color: var(--text-muted); }
-
     .bottom-row { display: flex; align-items: center; justify-content: flex-end; }
 
+    /* Status */
     .status { font-size: 12px; padding: 8px 12px; border-radius: 8px; display: none; }
-    .status.info { background: #1c3a5c; color: #6eb0ff; display: block; }
-    .status.error { background: #3a1c1c; color: #ff6b6b; display: block; }
+    .status.info    { background: #1c3a5c; color: #6eb0ff; display: block; }
+    .status.error   { background: #3a1c1c; color: #ff6b6b; display: block; }
     .status.success { background: #1c3a28; color: #6bff9e; display: block; }
 
+    /* Shortcuts */
     .shortcuts { display: flex; gap: 16px; flex-wrap: wrap; }
     .shortcut { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-muted); }
     kbd { background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; padding: 2px 6px; font-size: 10px; font-family: inherit; }
 
+    /* Spinner */
     @keyframes spin { to { transform: rotate(360deg); } }
     .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.6s linear infinite; flex-shrink: 0; }
 
@@ -136,24 +141,51 @@
   </style>
 </head>
 <body>
-<div class="app">
 
-  <!-- Header -->
+<!-- Login -->
+<div id="login-screen">
+  <div class="login-box">
+    <h2>TTS Player</h2>
+    <p>Enter password to continue</p>
+    <input type="password" id="login-input" placeholder="Password" autocomplete="current-password">
+    <p class="login-error" id="login-error"></p>
+    <button class="btn btn-primary" id="login-btn">Unlock</button>
+  </div>
+</div>
+
+<!-- App -->
+<div id="app" class="hidden">
+<div class="app-inner">
+
   <div class="header">
     <h1>TTS Player</h1>
-    <button class="settings-toggle" id="settings-btn">⚙ Settings</button>
+    <div class="header-actions">
+      <button class="btn-ghost" id="library-btn">Library</button>
+      <button class="btn-ghost" id="settings-btn">Settings</button>
+    </div>
   </div>
 
-  <!-- Settings -->
   <div class="settings-panel" id="settings-panel">
-    <label for="api-key">OpenAI API Key</label>
-    <input type="password" id="api-key" placeholder="sk-...">
+    <div class="card-title">Settings</div>
+    <div>
+      <label for="api-key">OpenAI API Key</label>
+      <input type="password" id="api-key" placeholder="sk-...">
+    </div>
+    <button class="btn btn-secondary" id="logout-btn" style="align-self:flex-start">Lock player</button>
   </div>
 
-  <!-- Status -->
   <div class="status" id="status" role="status"></div>
 
-  <!-- TTS Generator -->
+  <div class="library-panel" id="library-panel">
+    <div class="library-header">
+      <span>Library</span>
+      <button class="btn-ghost" id="library-refresh-btn">Refresh</button>
+    </div>
+    <ul class="library-list" id="library-list">
+      <li class="library-empty">Loading…</li>
+    </ul>
+  </div>
+
   <div class="card">
     <div class="card-title">Generate Audio</div>
     <div>
@@ -183,9 +215,7 @@
     <button class="btn btn-primary" id="generate-btn">Generate</button>
   </div>
 
-  <!-- File Open -->
   <div class="divider">or open local file</div>
-
   <div class="card">
     <div class="file-open-area">
       <button class="btn btn-secondary" id="open-file-btn">Open File</button>
@@ -194,20 +224,17 @@
     </div>
   </div>
 
-  <!-- Player -->
-  <div class="card" id="player-card">
+  <div class="card">
     <div class="card-title" id="track-title">Player</div>
     <p class="no-audio-msg" id="no-audio-msg">Load audio to begin playback</p>
 
-    <!-- Player controls — hidden until audio is loaded -->
     <div id="player-controls" class="player-hidden">
-      <div style="display:flex; flex-direction:column; gap:14px;">
+      <div style="display:flex;flex-direction:column;gap:14px;">
         <div class="waveform-bar">
           <span class="time" id="current-time">0:00</span>
           <input type="range" id="seek" min="0" max="100" value="0" aria-label="Seek">
           <span class="time end" id="duration">0:00</span>
         </div>
-
         <div class="controls">
           <button class="btn-icon" id="back120" aria-label="Back 2 minutes"><span class="icon">⏪</span>2min</button>
           <button class="btn-icon" id="back60"  aria-label="Back 1 minute"><span class="icon">⏪</span>1min</button>
@@ -216,17 +243,14 @@
           <button class="btn-icon" id="fwd15"   aria-label="Forward 15 seconds">15s<span class="icon">⏩</span></button>
           <button class="btn-icon" id="fwd30"   aria-label="Forward 30 seconds">30s<span class="icon">⏩</span></button>
         </div>
-
         <div class="speed-row">
           <span class="speed-label">Speed</span>
           <div class="speed-pills" id="speed-pills"></div>
         </div>
-
         <div class="volume-row">
           <span class="volume-icon" aria-hidden="true">🔊</span>
           <input type="range" id="volume" min="0" max="1" step="0.05" value="1" aria-label="Volume">
         </div>
-
         <div class="bottom-row">
           <button class="btn btn-secondary" id="download-btn">⬇ Download</button>
         </div>
@@ -234,7 +258,6 @@
     </div>
   </div>
 
-  <!-- Keyboard shortcuts -->
   <div class="shortcuts" aria-label="Keyboard shortcuts">
     <div class="shortcut"><kbd>Space</kbd> Play / Pause</div>
     <div class="shortcut"><kbd>←</kbd> −30s</div>
@@ -245,13 +268,66 @@
   </div>
 
 </div>
+</div>
 
 <audio id="audio"></audio>
 
 <script>
   'use strict';
 
-  // ── Elements ────────────────────────────────────────────────
+  // ── Auth ─────────────────────────────────────────────────
+  const PASSWORD   = 'kaeru';
+  const AUTH_KEY   = 'tts_auth_v1';
+  const AUTH_TOKEN = btoa(PASSWORD + '_device_trusted');
+
+  const loginScreen = document.getElementById('login-screen');
+  const appEl       = document.getElementById('app');
+  const loginInput  = document.getElementById('login-input');
+  const loginBtn    = document.getElementById('login-btn');
+  const loginError  = document.getElementById('login-error');
+
+  function isAuthenticated() {
+    return localStorage.getItem(AUTH_KEY) === AUTH_TOKEN;
+  }
+
+  function unlock() {
+    if (loginInput.value === PASSWORD) {
+      localStorage.setItem(AUTH_KEY, AUTH_TOKEN);
+      loginScreen.classList.add('hidden');
+      appEl.classList.remove('hidden');
+      loginError.textContent = '';
+      init();
+    } else {
+      loginError.textContent = 'Incorrect password';
+      loginInput.value = '';
+      loginInput.focus();
+    }
+  }
+
+  loginBtn.addEventListener('click', unlock);
+  loginInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') unlock(); });
+
+  document.getElementById('logout-btn').addEventListener('click', () => {
+    localStorage.removeItem(AUTH_KEY);
+    location.reload();
+  });
+
+  if (isAuthenticated()) {
+    loginScreen.classList.add('hidden');
+    appEl.classList.remove('hidden');
+    init();
+  } else {
+    loginInput.focus();
+  }
+
+  // ── Init (runs after auth) ────────────────────────────────
+  function init() {
+    loadApiKey();
+    buildSpeedPills();
+    checkUrlParam();
+  }
+
+  // ── Elements ──────────────────────────────────────────────
   const audio       = document.getElementById('audio');
   const apiKeyInput = document.getElementById('api-key');
   const statusEl    = document.getElementById('status');
@@ -268,26 +344,133 @@
   const downloadBtn = document.getElementById('download-btn');
   const fileInput   = document.getElementById('file-input');
   const fileNameEl  = document.getElementById('file-name');
+  const libraryList = document.getElementById('library-list');
 
-  // ── State ───────────────────────────────────────────────────
+  // ── State ─────────────────────────────────────────────────
   const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
-  let speedIdx  = 2;   // 1x default
+  let speedIdx        = 2;
   let currentBlob     = null;
   let currentFilename = 'audio.mp3';
+  let activeLibItem   = null;
+  let currentObjectUrl = null;
+  let libraryLoading  = false;
 
-  // ── API key persistence ─────────────────────────────────────
-  const saved = localStorage.getItem('oai_api_key');
-  if (saved) apiKeyInput.value = saved;
-  apiKeyInput.addEventListener('input', () => localStorage.setItem('oai_api_key', apiKeyInput.value));
+  // ── API key ───────────────────────────────────────────────
+  function loadApiKey() {
+    const saved = localStorage.getItem('oai_api_key');
+    if (saved) apiKeyInput.value = saved;
+    apiKeyInput.addEventListener('input', () => localStorage.setItem('oai_api_key', apiKeyInput.value));
+  }
 
+  // ── Toggles ───────────────────────────────────────────────
   document.getElementById('settings-btn').addEventListener('click', () => {
     document.getElementById('settings-panel').classList.toggle('open');
   });
 
-  // ── Status ───────────────────────────────────────────────────
+  document.getElementById('library-btn').addEventListener('click', () => {
+    const panel = document.getElementById('library-panel');
+    panel.classList.toggle('open');
+    if (panel.classList.contains('open')) loadLibrary();
+  });
+
+  document.getElementById('library-refresh-btn').addEventListener('click', loadLibrary);
+
+  // ── Library ───────────────────────────────────────────────
+  async function loadLibrary() {
+    if (libraryLoading) return;
+    libraryLoading = true;
+    while (libraryList.firstChild) libraryList.removeChild(libraryList.firstChild);
+    const loading = document.createElement('li');
+    loading.className = 'library-empty';
+    loading.textContent = 'Loading…';
+    libraryList.appendChild(loading);
+
+    try {
+      const res = await fetch('library.json?t=' + Date.now());
+      if (!res.ok) throw new Error('Not found');
+      const items = await res.json();
+
+      while (libraryList.firstChild) libraryList.removeChild(libraryList.firstChild);
+
+      if (!items.length) {
+        const empty = document.createElement('li');
+        empty.className = 'library-empty';
+        empty.textContent = 'No files yet';
+        libraryList.appendChild(empty);
+        return;
+      }
+
+      items.sort((a, b) => b.filename.localeCompare(a.filename));
+
+      items.forEach(item => {
+        const li     = document.createElement('li');
+        li.className = 'library-item';
+
+        const info   = document.createElement('div');
+        info.className = 'lib-info';
+
+        const titleEl = document.createElement('div');
+        titleEl.className = 'lib-title';
+        titleEl.textContent = item.title || item.filename;
+
+        const dateEl = document.createElement('div');
+        dateEl.className = 'lib-date';
+        dateEl.textContent = item.date || '';
+
+        const icon   = document.createElement('span');
+        icon.className = 'lib-play';
+        icon.setAttribute('aria-hidden', 'true');
+        icon.textContent = '▶';
+
+        info.appendChild(titleEl);
+        info.appendChild(dateEl);
+        li.appendChild(info);
+        li.appendChild(icon);
+
+        li.addEventListener('click', () => {
+          currentFilename = item.filename;
+          currentBlob = null;
+          loadAudio(item.filename, item.title || item.filename);
+          setActiveLibItem(li, icon);
+        });
+
+        libraryList.appendChild(li);
+      });
+    } catch (_) {
+      while (libraryList.firstChild) libraryList.removeChild(libraryList.firstChild);
+      const err = document.createElement('li');
+      err.className = 'library-empty';
+      err.textContent = 'Could not load library';
+      libraryList.appendChild(err);
+    } finally {
+      libraryLoading = false;
+    }
+  }
+
+  function setActiveLibItem(li, icon) {
+    if (activeLibItem) {
+      activeLibItem.el.classList.remove('active');
+      activeLibItem.icon.textContent = '▶';
+    }
+    activeLibItem = { el: li, icon };
+    li.classList.add('active');
+    icon.textContent = '⏸';
+  }
+
+  // ── URL param auto-load ───────────────────────────────────
+  function checkUrlParam() {
+    const params = new URLSearchParams(location.search);
+    const src = params.get('src');
+    if (!src) return;
+    const title = src.replace(/^.*\//, '').replace(/\.mp3$/i, '').replace(/_/g, ' ');
+    currentFilename = src;
+    loadAudio(src, title);
+  }
+
+  // ── Status ────────────────────────────────────────────────
   let statusTimer = null;
-  function setStatus(msg, type = 'info', autoClear = 0) {
-    statusEl.className = 'status ' + type;
+  function setStatus(msg, type, autoClear) {
+    statusEl.className = 'status ' + (type || 'info');
     statusEl.textContent = msg;
     if (statusTimer) clearTimeout(statusTimer);
     if (autoClear) statusTimer = setTimeout(clearStatus, autoClear);
@@ -297,9 +480,9 @@
     statusEl.textContent = '';
   }
 
-  // ── Speed pills ──────────────────────────────────────────────
+  // ── Speed ─────────────────────────────────────────────────
   function buildSpeedPills() {
-    speedPills.textContent = '';
+    while (speedPills.firstChild) speedPills.removeChild(speedPills.firstChild);
     SPEEDS.forEach((s, i) => {
       const pill = document.createElement('button');
       pill.className = 'speed-pill' + (i === speedIdx ? ' active' : '');
@@ -316,9 +499,7 @@
     buildSpeedPills();
   }
 
-  buildSpeedPills();
-
-  // ── Show player ──────────────────────────────────────────────
+  // ── Player show ───────────────────────────────────────────
   function showPlayer(title) {
     noAudioMsg.style.display = 'none';
     playerCtrl.classList.remove('player-hidden');
@@ -326,38 +507,35 @@
     audio.playbackRate = SPEEDS[speedIdx];
   }
 
-  // ── Audio events ─────────────────────────────────────────────
+  // ── Audio events ──────────────────────────────────────────
   audio.addEventListener('timeupdate', () => {
     if (audio.duration) seekEl.value = (audio.currentTime / audio.duration) * 100;
     curTimeEl.textContent = fmt(audio.currentTime);
   });
-
-  audio.addEventListener('loadedmetadata', () => {
-    durEl.textContent = fmt(audio.duration);
-  });
-
+  audio.addEventListener('loadedmetadata', () => { durEl.textContent = fmt(audio.duration); });
   audio.addEventListener('ended', () => {
     playBtn.textContent = '▶';
     playBtn.setAttribute('aria-label', 'Play');
+    if (activeLibItem) activeLibItem.icon.textContent = '▶';
   });
-
   seekEl.addEventListener('input', () => {
     if (audio.duration) audio.currentTime = (seekEl.value / 100) * audio.duration;
   });
-
   volEl.addEventListener('input', () => { audio.volume = volEl.value; });
 
-  // ── Playback controls ────────────────────────────────────────
+  // ── Playback ──────────────────────────────────────────────
   function togglePlay() {
     if (!audio.src) return;
     if (audio.paused) {
       audio.play();
       playBtn.textContent = '⏸';
       playBtn.setAttribute('aria-label', 'Pause');
+      if (activeLibItem) activeLibItem.icon.textContent = '⏸';
     } else {
       audio.pause();
       playBtn.textContent = '▶';
       playBtn.setAttribute('aria-label', 'Play');
+      if (activeLibItem) activeLibItem.icon.textContent = '▶';
     }
   }
 
@@ -372,19 +550,21 @@
   document.getElementById('fwd15').addEventListener('click',   () => seekBy(15));
   document.getElementById('fwd30').addEventListener('click',   () => seekBy(30));
 
-  // ── Open local file ──────────────────────────────────────────
+  // ── Open local file ───────────────────────────────────────
   document.getElementById('open-file-btn').addEventListener('click', () => fileInput.click());
-
   fileInput.addEventListener('change', () => {
     const file = fileInput.files[0];
     if (!file) return;
     currentBlob = file;
     currentFilename = file.name;
     fileNameEl.textContent = file.name;
+    activeLibItem = null;
     loadAudio(URL.createObjectURL(file), file.name);
   });
 
   function loadAudio(url, title) {
+    if (currentObjectUrl) { URL.revokeObjectURL(currentObjectUrl); currentObjectUrl = null; }
+    if (url.startsWith('blob:')) currentObjectUrl = url;
     audio.src = url;
     showPlayer(title);
     clearStatus();
@@ -394,7 +574,7 @@
     }).catch(() => {});
   }
 
-  // ── TTS Generation ───────────────────────────────────────────
+  // ── TTS Generation ────────────────────────────────────────
   generateBtn.addEventListener('click', generateTTS);
 
   async function generateTTS() {
@@ -404,7 +584,6 @@
       document.getElementById('settings-panel').classList.add('open');
       return;
     }
-
     const text = document.getElementById('tts-text').value.trim();
     if (!text) { setStatus('Enter text first', 'error'); return; }
 
@@ -417,32 +596,25 @@
     spinner.setAttribute('aria-hidden', 'true');
     generateBtn.textContent = 'Generating…';
     generateBtn.prepend(spinner);
-
     setStatus('Calling OpenAI TTS API…', 'info');
 
     try {
       const res = await fetch('https://api.openai.com/v1/audio/speech', {
         method: 'POST',
-        headers: {
-          'Authorization': 'Bearer ' + apiKey,
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Authorization': 'Bearer ' + apiKey, 'Content-Type': 'application/json' },
         body: JSON.stringify({ model, input: text, voice }),
       });
-
       if (!res.ok) {
         let msg = 'HTTP ' + res.status;
         try { const j = await res.json(); msg = j?.error?.message || msg; } catch (_) {}
         throw new Error(msg);
       }
-
       const blob = await res.blob();
       currentBlob = blob;
       currentFilename = 'tts-' + voice + '-' + Date.now() + '.mp3';
-
-      const label = text.length > 50 ? text.slice(0, 50) + '…' : text;
-      loadAudio(URL.createObjectURL(blob), voice + ' — ' + label);
-
+      const label = text.length > 50 ? text.slice(0, 50) + '\u2026' : text;
+      activeLibItem = null;
+      loadAudio(URL.createObjectURL(blob), voice + ' \u2014 ' + label);
       setStatus('Generated successfully', 'success', 3000);
     } catch (e) {
       setStatus('Error: ' + e.message, 'error');
@@ -452,48 +624,35 @@
     }
   }
 
-  // ── Download ──────────────────────────────────────────────────
+  // ── Download ──────────────────────────────────────────────
   downloadBtn.addEventListener('click', () => {
     if (!currentBlob) return;
+    const url = URL.createObjectURL(currentBlob);
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(currentBlob);
+    a.href = url;
     a.download = currentFilename;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   });
 
-  // ── Keyboard shortcuts ─────────────────────────────────────────
+  // ── Keyboard shortcuts ────────────────────────────────────
   document.addEventListener('keydown', (e) => {
     const tag = document.activeElement.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
-
+    if (!isAuthenticated()) return;
     switch (e.key) {
-      case ' ':
-        e.preventDefault();
-        togglePlay();
-        break;
-      case 'ArrowLeft':
-        e.preventDefault();
-        seekBy(-30);
-        break;
-      case 'ArrowRight':
-        e.preventDefault();
-        seekBy(15);
-        break;
-      case 'ArrowUp':
-        e.preventDefault();
-        if (speedIdx < SPEEDS.length - 1) setSpeed(speedIdx + 1);
-        break;
-      case 'ArrowDown':
-        e.preventDefault();
-        if (speedIdx > 0) setSpeed(speedIdx - 1);
-        break;
-      case 'd': case 'D':
-        if (currentBlob) downloadBtn.click();
-        break;
+      case ' ':          e.preventDefault(); togglePlay(); break;
+      case 'ArrowLeft':  e.preventDefault(); seekBy(-30); break;
+      case 'ArrowRight': e.preventDefault(); seekBy(15);  break;
+      case 'ArrowUp':    e.preventDefault(); if (speedIdx < SPEEDS.length - 1) setSpeed(speedIdx + 1); break;
+      case 'ArrowDown':  e.preventDefault(); if (speedIdx > 0) setSpeed(speedIdx - 1); break;
+      case 'd': case 'D': if (currentBlob) downloadBtn.click(); break;
     }
   });
 
-  // ── Time formatter ────────────────────────────────────────────
+  // ── Helpers ───────────────────────────────────────────────
   function fmt(s) {
     if (!isFinite(s)) return '0:00';
     const m = Math.floor(s / 60);
