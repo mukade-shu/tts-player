@@ -267,7 +267,7 @@
   const PASSWORD   = 'kaeru';
   const AUTH_KEY   = 'tts_auth_v1';
   const AUTH_TOKEN = btoa(PASSWORD + '_device_trusted');
-  const R2_BASE    = 'https://pub-4b7fc72b39854d4fa39fc78a9d0bd6e9.r2.dev';
+  const RELEASE_BASE = 'https://github.com/mukade-shu/tts-player/releases/download/audio';
 
   // ── Auth ──────────────────────────────────────────────────
   const loginScreen = document.getElementById('login-screen');
@@ -299,21 +299,6 @@
     location.reload();
   });
 
-  if (isAuthenticated()) {
-    loginScreen.classList.add('hidden');
-    appEl.classList.add('visible');
-    init();
-  } else {
-    loginInput.focus();
-  }
-
-  // ── Init ──────────────────────────────────────────────────
-  function init() {
-    buildSpeedPills();
-    loadLibrary();
-    checkUrlParam();
-  }
-
   // ── Elements ──────────────────────────────────────────────
   const audio       = document.getElementById('audio');
   const seekEl      = document.getElementById('seek');
@@ -334,6 +319,21 @@
   let activeLibItem   = null;
   let currentObjectUrl = null;
 
+  // ── Init ──────────────────────────────────────────────────
+  function init() {
+    buildSpeedPills();
+    loadLibrary();
+    checkUrlParam();
+  }
+
+  if (isAuthenticated()) {
+    loginScreen.classList.add('hidden');
+    appEl.classList.add('visible');
+    init();
+  } else {
+    loginInput.focus();
+  }
+
   // ── Helpers ───────────────────────────────────────────────
   function fmt(s) {
     if (!isFinite(s)) return '0:00';
@@ -342,7 +342,7 @@
 
   function resolveAudioUrl(src) {
     if (src.startsWith('http') || src.startsWith('blob:')) return src;
-    return R2_BASE + '/' + src;
+    return RELEASE_BASE + '/' + src;
   }
 
   function clearList() {
