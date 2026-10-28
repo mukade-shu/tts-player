@@ -348,6 +348,8 @@
   let currentUrl       = null;
   let currentKey       = null;  // library filename whose position is tracked (null for local files)
   let lastSaved        = 0;
+  let heardSecs        = 0;  // seconds actually played since load (seeks excluded)
+  let lastTime         = 0;
 
   // ── Resume position ───────────────────────────────────────
   function getPos(name) {
@@ -498,6 +500,7 @@
     li.appendChild(icon);
 
     li.addEventListener('click', () => {
+      if (isDone) setFlag(DONE_KEY, item.filename, false);
       currentFilename = item.filename;
       currentBlob = null;
       loadAudio(resolveAudioUrl(item.url || item.filename), item.title || item.filename);
@@ -536,6 +539,8 @@
     if (currentObjectUrl) { URL.revokeObjectURL(currentObjectUrl); currentObjectUrl = null; }
     if (url.startsWith('blob:')) currentObjectUrl = url;
     savePos();
+    heardSecs = 0;
+    lastTime = 0;
     currentKey = currentBlob ? null : currentFilename;
     audio.src = url;
     currentUrl = url;
@@ -555,6 +560,9 @@
 
   // ── Audio events ──────────────────────────────────────────
   audio.addEventListener('timeupdate', () => {
+    const step = audio.currentTime - lastTime;
+    if (!audio.paused && step > 0 && step < 2) heardSecs += step;
+    lastTime = audio.currentTime;
     if (audio.duration) seekEl.value = (audio.currentTime / audio.duration) * 100;
     curTimeEl.textContent = fmt(audio.currentTime);
     if (Date.now() - lastSaved > 5000) savePos();
@@ -570,8 +578,16 @@
   document.addEventListener('visibilitychange', () => { if (document.hidden) savePos(); });
   window.addEventListener('pagehide', savePos);
   audio.addEventListener('ended', () => {
-    clearPos();
     playBtn.textContent = '▶';
+    // iOS Safari can fire 'ended' when a stream drops (expired release URL, network loss);
+    // only count it as finished when playback really reached the end
+    const d = audio.duration;
+    const finished = isFinite(d) && audio.currentTime >= d - 15 && heardSecs >= Math.min(30, d / 2);
+    if (!finished) {
+      if (activeLibItem) activeLibItem.icon.textContent = '▶';
+      return;
+    }
+    clearPos();
     if (currentKey) {
       setFlag(DONE_KEY, currentKey, true);
       renderLibrary();
