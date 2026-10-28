@@ -332,7 +332,7 @@
     let host = '';
     try { host = url ? new URL(url).hostname.replace(/^www\./, '') : ''; } catch (_) {}
     sourceEl.hidden = !host;
-    if (host) { sourceEl.href = url; sourceEl.textContent = 'Source: ' + host + ' ↗'; }
+    if (host) { sourceEl.href = url; sourceEl.textContent = 'Read text: ' + host + ' ↗'; }
   }
 
   // ── State ─────────────────────────────────────────────────
