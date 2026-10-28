@@ -336,11 +336,11 @@
   }
 
   // ── State ─────────────────────────────────────────────────
-  const SPEEDS = [0.75, 0.85, 1, 1.1, 1.2, 1.3];
+  const SPEEDS = [0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3];
   const POS_PREFIX = 'tts_pos:';
-  const SPEED_KEY  = 'tts_speed';
-  let speedIdx        = 2;
-  try { const v = +localStorage.getItem(SPEED_KEY); if (localStorage.getItem(SPEED_KEY) !== null && SPEEDS[v]) speedIdx = v; } catch (_) {}
+  const SPEED_KEY  = 'tts_speed_value';  // stores the rate itself, so editing SPEEDS keeps the choice
+  let speedIdx        = SPEEDS.indexOf(1);
+  try { const i = SPEEDS.indexOf(parseFloat(localStorage.getItem(SPEED_KEY))); if (i >= 0) speedIdx = i; } catch (_) {}
   let currentBlob     = null;
   let currentFilename = 'audio.mp3';
   let activeLibItem   = null;
@@ -631,7 +631,7 @@
 
   // ── Speed ─────────────────────────────────────────────────
   function buildSpeedPills() {
-    try { localStorage.setItem(SPEED_KEY, String(speedIdx)); } catch (_) {}
+    try { localStorage.setItem(SPEED_KEY, String(SPEEDS[speedIdx])); } catch (_) {}
     while (speedPills.firstChild) speedPills.removeChild(speedPills.firstChild);
     SPEEDS.forEach((s, i) => {
       const pill = document.createElement('button');
