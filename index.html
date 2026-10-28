@@ -95,6 +95,10 @@
     .library-item.active .lib-play { color: var(--accent); }
     .lib-progress { height: 2px; background: var(--border); border-radius: 1px; margin-top: 5px; overflow: hidden; }
     .lib-progress > div { height: 100%; background: var(--accent); }
+    .library-item.done .lib-title, .library-item.done .lib-date { opacity: 0.5; }
+    .lib-archive { background: none; border: 1px solid var(--border); color: var(--text-muted); border-radius: 6px; padding: 3px 7px; font-size: 10px; font-family: inherit; cursor: pointer; flex-shrink: 0; }
+    .lib-archive:hover { color: var(--text); border-color: var(--text-muted); }
+    .library-section { padding: 10px 16px; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer; border-bottom: 1px solid var(--border); background: var(--bg); user-select: none; }
     .library-empty { padding: 24px 16px; text-align: center; color: var(--text-muted); font-size: 12px; }
 
     /* Main */
@@ -389,75 +393,120 @@
   // ── Library ───────────────────────────────────────────────
   document.getElementById('library-refresh-btn').addEventListener('click', loadLibrary);
 
+  // Per-device listening state: finished ("done") and archived files
+  const DONE_KEY = 'tts_done', ARCHIVE_KEY = 'tts_archived';
+  function getSet(key) {
+    try { return new Set(JSON.parse(localStorage.getItem(key)) || []); } catch (_) { return new Set(); }
+  }
+  function setFlag(key, name, on) {
+    const set = getSet(key);
+    on ? set.add(name) : set.delete(name);
+    try { localStorage.setItem(key, JSON.stringify([...set])); } catch (_) {}
+  }
+
+  let libraryItems = [];
+  let archiveOpen  = false;
+
   async function loadLibrary() {
     emptyMsg('Loading…');
     try {
       const res = await fetch('library.json?t=' + Date.now());
       if (!res.ok) throw new Error();
-      const items = await res.json();
-
-      clearList();
-      if (!items.length) { emptyMsg('No files yet'); return; }
-
-      // library.json is kept newest-first by tts-edge.py (parts stay in 1/2/3 order)
-      items.forEach(item => {
-        const li = document.createElement('li');
-        li.className = 'library-item';
-
-        const info = document.createElement('div');
-        info.className = 'lib-info';
-
-        const titleEl = document.createElement('div');
-        titleEl.className = 'lib-title';
-        titleEl.textContent = item.title || item.filename;
-
-        const dateEl = document.createElement('div');
-        dateEl.className = 'lib-date';
-        dateEl.textContent = item.date || '';
-
-        const icon = document.createElement('span');
-        icon.className = 'lib-play';
-        icon.textContent = '▶';
-
-        info.appendChild(titleEl);
-        info.appendChild(dateEl);
-        const pos = getPos(item.filename);
-        if (pos && pos.d) {
-          dateEl.textContent += ' · ' + fmt(pos.t) + ' / ' + fmt(pos.d);
-          const bar = document.createElement('div');
-          bar.className = 'lib-progress';
-          const fill = document.createElement('div');
-          fill.style.width = Math.min(100, pos.t / pos.d * 100) + '%';
-          bar.appendChild(fill);
-          info.appendChild(bar);
-        }
-        li.appendChild(info);
-        li.appendChild(icon);
-
-        li.addEventListener('click', () => {
-          currentFilename = item.filename;
-          currentBlob = null;
-          loadAudio(resolveAudioUrl(item.url || item.filename), item.title || item.filename);
-          if (activeLibItem) {
-            activeLibItem.el.classList.remove('active');
-            activeLibItem.icon.textContent = '▶';
-          }
-          activeLibItem = { el: li, icon };
-          li.classList.add('active');
-          icon.textContent = '⏸';
-        });
-
-        libraryList.appendChild(li);
-        if (currentKey === item.filename) {
-          document.getElementById('track-title').textContent = item.title || item.filename;
-          if ('mediaSession' in navigator) navigator.mediaSession.metadata = new MediaMetadata({ title: item.title || item.filename });
-          activeLibItem = { el: li, icon };
-          li.classList.add('active');
-        }
-      });
+      libraryItems = await res.json();
+      renderLibrary();
     } catch (_) {
       emptyMsg('Could not load library');
     }
+  }
+
+  function renderLibrary() {
+    clearList();
+    activeLibItem = null;
+    if (!libraryItems.length) { emptyMsg('No files yet'); return; }
+
+    // library.json is kept newest-first by tts-edge.py (parts stay in 1/2/3 order);
+    // finished files sink below unfinished ones, archived files go into a collapsed section
+    const done = getSet(DONE_KEY), archived = getSet(ARCHIVE_KEY);
+    const live = libraryItems.filter(i => !archived.has(i.filename));
+    const inArchive = libraryItems.filter(i => archived.has(i.filename));
+    live.filter(i => !done.has(i.filename)).forEach(i => libraryList.appendChild(libraryRow(i, false, false)));
+    live.filter(i => done.has(i.filename)).forEach(i => libraryList.appendChild(libraryRow(i, true, false)));
+
+    if (inArchive.length) {
+      const head = document.createElement('li');
+      head.className = 'library-section';
+      head.textContent = (archiveOpen ? '▾ ' : '▸ ') + 'Archive (' + inArchive.length + ')';
+      head.addEventListener('click', () => { archiveOpen = !archiveOpen; renderLibrary(); });
+      libraryList.appendChild(head);
+      if (archiveOpen) inArchive.forEach(i => libraryList.appendChild(libraryRow(i, done.has(i.filename), true)));
+    }
+  }
+
+  function libraryRow(item, isDone, isArchived) {
+    const li = document.createElement('li');
+    li.className = 'library-item' + (isDone ? ' done' : '');
+
+    const info = document.createElement('div');
+    info.className = 'lib-info';
+
+    const titleEl = document.createElement('div');
+    titleEl.className = 'lib-title';
+    titleEl.textContent = item.title || item.filename;
+
+    const dateEl = document.createElement('div');
+    dateEl.className = 'lib-date';
+    dateEl.textContent = (item.date || '') + (isDone ? ' · ✓ Played' : '');
+
+    const icon = document.createElement('span');
+    icon.className = 'lib-play';
+    icon.textContent = '▶';
+
+    const archiveBtn = document.createElement('button');
+    archiveBtn.className = 'lib-archive';
+    archiveBtn.textContent = isArchived ? 'Restore' : 'Archive';
+    archiveBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      setFlag(ARCHIVE_KEY, item.filename, !isArchived);
+      renderLibrary();
+    });
+
+    info.appendChild(titleEl);
+    info.appendChild(dateEl);
+    const pos = getPos(item.filename);
+    if (pos && pos.d && !isDone) {
+      dateEl.textContent += ' · ' + fmt(pos.t) + ' / ' + fmt(pos.d);
+      const bar = document.createElement('div');
+      bar.className = 'lib-progress';
+      const fill = document.createElement('div');
+      fill.style.width = Math.min(100, pos.t / pos.d * 100) + '%';
+      bar.appendChild(fill);
+      info.appendChild(bar);
+    }
+    li.appendChild(info);
+    li.appendChild(archiveBtn);
+    li.appendChild(icon);
+
+    li.addEventListener('click', () => {
+      currentFilename = item.filename;
+      currentBlob = null;
+      loadAudio(resolveAudioUrl(item.url || item.filename), item.title || item.filename);
+      if (activeLibItem) {
+        activeLibItem.el.classList.remove('active');
+        activeLibItem.icon.textContent = '▶';
+      }
+      activeLibItem = { el: li, icon };
+      li.classList.add('active');
+      icon.textContent = '⏸';
+    });
+
+    if (currentKey === item.filename) {
+      document.getElementById('track-title').textContent = item.title || item.filename;
+      if ('mediaSession' in navigator) navigator.mediaSession.metadata = new MediaMetadata({ title: item.title || item.filename });
+      activeLibItem = { el: li, icon };
+      li.classList.add('active');
+      icon.textContent = audio.paused ? '▶' : '⏸';
+    }
+    return li;
   }
 
   // ── URL param ─────────────────────────────────────────────
@@ -509,7 +558,12 @@
   audio.addEventListener('ended', () => {
     clearPos();
     playBtn.textContent = '▶';
-    if (activeLibItem) activeLibItem.icon.textContent = '▶';
+    if (currentKey) {
+      setFlag(DONE_KEY, currentKey, true);
+      renderLibrary();
+    } else if (activeLibItem) {
+      activeLibItem.icon.textContent = '▶';
+    }
   });
   seekEl.addEventListener('input', () => {
     if (audio.duration) audio.currentTime = (seekEl.value / 100) * audio.duration;
