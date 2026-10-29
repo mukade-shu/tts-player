@@ -170,6 +170,7 @@
     .speed-pill { background: var(--surface2); border: 1px solid var(--border); color: var(--text-muted); border-radius: 6px; padding: 4px 10px; font-size: 12px; cursor: pointer; transition: all 0.15s; }
     .speed-pill:hover { color: var(--text); border-color: var(--text-muted); }
     .speed-pill.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .speed-value { min-width: 48px; text-align: center; font-size: 13px; font-variant-numeric: tabular-nums; align-self: center; }
     .volume-row { display: flex; align-items: center; gap: 8px; }
     .volume-icon { font-size: 16px; color: var(--text-muted); }
     .bottom-row { display: flex; align-items: center; justify-content: flex-end; }
@@ -239,7 +240,20 @@
     .seg button { flex: 1; background: var(--surface2); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 8px 6px; font-size: 13px; font-family: inherit; cursor: pointer; }
     .seg button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
     .seg .val { flex: 1; text-align: center; font-size: 13px; color: var(--text-muted); }
-    .toast { position: fixed; z-index: 70; left: 50%; top: 64px; transform: translateX(-50%); background: var(--text); color: var(--bg); border-radius: 16px; padding: 6px 14px; font-size: 13px; pointer-events: none; }
+    .toast { position: fixed; z-index: 70; left: 50%; top: 64px; transform: translateX(-50%); background: var(--text); color: var(--bg); border-radius: 16px; padding: 6px 14px; font-size: 13px; pointer-events: none; display: flex; align-items: center; gap: 10px; white-space: nowrap; }
+    .toast button { pointer-events: auto; background: none; border: 1px solid var(--bg); color: var(--bg); border-radius: 12px; padding: 3px 10px; font-size: 12px; font-family: inherit; cursor: pointer; }
+    .reader-text .s.memo { text-decoration: underline solid var(--accent); text-decoration-thickness: 2px; text-underline-offset: 4px; }
+    .menu-memo { flex-basis: 100%; font-size: 13px; color: var(--text); padding: 6px 10px 2px; white-space: pre-wrap; max-width: 320px; }
+    .menu-memo[hidden] { display: none; }
+    .sentence-menu { flex-wrap: wrap; max-width: calc(100vw - 16px); }
+    .sheet-list li .sub { display: block; font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .sheet-list li .memo-text { white-space: normal; }
+    #memo-dlg { position: fixed; inset: 0; z-index: 80; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; padding: 16px; }
+    #memo-dlg[hidden] { display: none; }
+    .memo-box { width: min(480px, 100%); background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+    .memo-quote { font-size: 13px; color: var(--text-muted); max-height: 6em; overflow: hidden; }
+    .memo-box textarea { width: 100%; min-height: 110px; background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 10px; font-size: 16px; font-family: inherit; resize: vertical; }
+    .memo-actions { display: flex; gap: 8px; justify-content: flex-end; }
     .toast[hidden] { display: none; }
 
     /* Mobile */
@@ -325,6 +339,10 @@
             <span class="speed-label">Speed</span>
             <div class="speed-pills" id="speed-pills"></div>
           </div>
+          <div class="speed-row">
+            <span class="speed-label">Sleep</span>
+            <div class="speed-pills" id="sleep-pills"></div>
+          </div>
           <div class="volume-row">
             <span class="volume-icon">🔊</span>
             <input type="range" id="volume" min="0" max="1" step="0.05" value="1" aria-label="Volume">
@@ -372,15 +390,28 @@
       <button class="r-btn r-play" id="r-play">▶</button>
       <button class="r-btn" id="r-fwd">15s ⏩</button>
       <button class="r-btn" id="r-speed">1x</button>
+      <button class="r-btn" id="r-sleep" aria-label="Sleep timer">🌙</button>
       <span class="time end" id="r-left">0:00</span>
     </div>
   </div>
 </div>
 <div class="sentence-menu" id="r-menu" hidden>
+  <div class="menu-memo" id="r-menu-memo" hidden></div>
   <button id="r-play-here">▶ Play from here</button>
   <button id="r-mark-here">🔖 Bookmark</button>
+  <button id="r-memo-here" hidden>✎ Memo</button>
 </div>
-<div class="toast" id="toast" hidden></div>
+<div class="toast" id="toast" hidden><span id="toast-text"></span><button id="toast-action" hidden></button></div>
+<div id="memo-dlg" hidden>
+  <div class="memo-box">
+    <div class="memo-quote" id="memo-quote"></div>
+    <textarea id="memo-input" placeholder="Memo"></textarea>
+    <div class="memo-actions">
+      <button class="btn btn-secondary" id="memo-cancel">Cancel</button>
+      <button class="btn btn-primary" id="memo-save">Save</button>
+    </div>
+  </div>
+</div>
 
 <audio id="audio"></audio>
 
@@ -452,11 +483,13 @@
   }
 
   // ── State ─────────────────────────────────────────────────
-  const SPEEDS = [0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3];
+  // Speed in 0.05 steps (− / +) plus one-tap presets
+  const SPEED_MIN = 0.5, SPEED_MAX = 2, SPEED_STEP = 0.05;
+  const SPEED_PRESETS = [0.8, 0.9, 1, 1.1, 1.2, 1.3];
   const POS_PREFIX = 'tts_pos:';
-  const SPEED_KEY  = 'tts_speed_value';  // stores the rate itself, so editing SPEEDS keeps the choice
-  let speedIdx        = SPEEDS.indexOf(1);
-  try { const i = SPEEDS.indexOf(parseFloat(localStorage.getItem(SPEED_KEY))); if (i >= 0) speedIdx = i; } catch (_) {}
+  const SPEED_KEY  = 'tts_speed_value';  // stores the rate itself
+  let speed           = 1;
+  try { const v = parseFloat(localStorage.getItem(SPEED_KEY)); if (v >= SPEED_MIN && v <= SPEED_MAX) speed = v; } catch (_) {}
   let currentBlob     = null;
   let currentFilename = 'audio.mp3';
   let activeLibItem   = null;
@@ -726,7 +759,13 @@
     if (doc.spans[selIdx]) doc.spans[selIdx].classList.remove('sel');
     selIdx = +span.dataset.i;
     span.classList.add('sel');
-    document.getElementById('r-mark-here').textContent = getBookmarks().includes(selIdx) ? '🔖 Remove bookmark' : '🔖 Bookmark';
+    const bm = bookmarkAt(selIdx);
+    document.getElementById('r-mark-here').textContent = bm ? '🔖 Remove bookmark' : '🔖 Bookmark';
+    const memoBtn = document.getElementById('r-memo-here'), memoEl = document.getElementById('r-menu-memo');
+    memoBtn.hidden = !bm;
+    memoBtn.textContent = bm && bm.memo ? '✎ Edit memo' : '✎ Add memo';
+    memoEl.hidden = !(bm && bm.memo);
+    memoEl.textContent = bm && bm.memo ? bm.memo : '';
     rMenu.hidden = false;
     const r = span.getClientRects()[0], m = rMenu.getBoundingClientRect();
     const below = r.bottom + 8 + m.height < window.innerHeight - 90;
@@ -745,6 +784,11 @@
     toggleBookmark(selIdx);
     closeMenus();
   });
+  document.getElementById('r-memo-here').addEventListener('click', () => {
+    const i = selIdx;
+    closeMenus();
+    editMemo(i);
+  });
 
   function closeMenus() {
     rMenu.hidden = true;
@@ -754,28 +798,64 @@
   }
 
   let toastTimer = null;
-  function toast(text) {
-    const el = document.getElementById('toast');
-    el.textContent = text;
+  // action: [label, fn] → a button in the toast, which then stays 4 s instead of 1.5 s
+  function toast(text, action) {
+    const el = document.getElementById('toast'), btn = document.getElementById('toast-action');
+    document.getElementById('toast-text').textContent = text;
+    btn.hidden = !action;
+    btn.onclick = action ? () => { el.hidden = true; action[1](); } : null;
+    if (action) btn.textContent = action[0];
     el.hidden = false;
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => { el.hidden = true; }, 1500);
+    toastTimer = setTimeout(() => { el.hidden = true; }, action ? 4000 : 1500);
   }
 
   // ── Reader: bookmarks ──
-  function getBookmarks() { return doc ? loadJSON(BM_PREFIX + doc.item.filename, []) : []; }
+  // [{ i: sentence index, memo?: text }] (older entries were bare indexes)
+  function getBookmarks() {
+    return (doc ? loadJSON(BM_PREFIX + doc.item.filename, []) : []).map(b => typeof b === 'number' ? { i: b } : b);
+  }
+  function setBookmarks(marks) {
+    saveJSON(BM_PREFIX + doc.item.filename, marks.sort((a, b) => a.i - b.i));
+    markBookmarks();
+  }
+  function bookmarkAt(i) { return getBookmarks().find(b => b.i === i); }
   function toggleBookmark(i) {
     if (!doc || i < 0) return;
     const marks = getBookmarks();
-    const on = !marks.includes(i);
-    saveJSON(BM_PREFIX + doc.item.filename, on ? [...marks, i].sort((a, b) => a - b) : marks.filter(m => m !== i));
-    markBookmarks();
-    toast(on ? 'Bookmarked' : 'Bookmark removed');
+    const on = !marks.some(b => b.i === i);
+    setBookmarks(on ? [...marks, { i }] : marks.filter(b => b.i !== i));
+    if (on) toast('Bookmarked', ['Add memo', () => editMemo(i)]);
+    else toast('Bookmark removed');
   }
   function markBookmarks() {
-    const marks = new Set(getBookmarks());
-    doc.spans.forEach((s, i) => s.classList.toggle('bm', marks.has(i)));
+    const marks = new Map(getBookmarks().map(b => [b.i, b]));
+    doc.spans.forEach((s, i) => {
+      const b = marks.get(i);
+      s.classList.toggle('bm', !!b && !b.memo);
+      s.classList.toggle('memo', !!(b && b.memo));
+    });
   }
+
+  // ── Reader: memo on a bookmark (empty memo = plain bookmark again) ──
+  const memoDlg = document.getElementById('memo-dlg'), memoInput = document.getElementById('memo-input');
+  let memoIdx = -1;
+  function editMemo(i) {
+    const b = bookmarkAt(i);
+    if (!doc || !b) return;
+    memoIdx = i;
+    document.getElementById('memo-quote').textContent = doc.spans[i].textContent;
+    memoInput.value = b.memo || '';
+    memoDlg.hidden = false;
+    memoInput.focus();
+  }
+  document.getElementById('memo-cancel').addEventListener('click', () => { memoDlg.hidden = true; });
+  document.getElementById('memo-save').addEventListener('click', () => {
+    const text = memoInput.value.trim();
+    setBookmarks(getBookmarks().map(b => b.i === memoIdx ? (text ? { i: b.i, memo: text } : { i: b.i }) : b));
+    memoDlg.hidden = true;
+    toast(text ? 'Memo saved' : 'Memo removed');
+  });
   document.getElementById('r-mark').addEventListener('click', () => {
     toggleBookmark(follow && !audio.paused && curIdx >= 0 ? curIdx : topSentence());
   });
@@ -801,8 +881,22 @@
       if (r.cls) li.className = r.cls;
       const span = document.createElement('span');
       span.textContent = r.text;
+      if (r.sub) {
+        span.className = 'memo-text';
+        const sub = document.createElement('span');
+        sub.className = 'sub';
+        sub.textContent = r.sub;
+        span.appendChild(sub);
+      }
       li.appendChild(span);
       if (r.onClick) li.addEventListener('click', r.onClick);
+      if (r.onEdit) {
+        const ed = document.createElement('button');
+        ed.className = 'btn-ghost';
+        ed.textContent = '✎';
+        ed.addEventListener('click', e => { e.stopPropagation(); r.onEdit(); });
+        li.appendChild(ed);
+      }
       if (r.onRemove) {
         const x = document.createElement('button');
         x.className = 'btn-ghost';
@@ -833,14 +927,25 @@
       const top = Math.min(...doc.heads.map(h => h.level));
       sheetList('Contents', doc.heads.map(h => ({ text: h.text, cls: h.level > top ? 'indent' : '', onClick: () => jumpTo(h.i) })));
     }
-    const marks = getBookmarks();
-    if (marks.length) {
-      sheetList('Bookmarks', marks.filter(i => doc.spans[i]).map(i => ({
-        text: doc.spans[i].textContent,
-        onClick: () => jumpTo(i),
-        onRemove: () => { toggleBookmark(i); showContents(); },
+    const marks = getBookmarks().filter(b => doc.spans[b.i]);
+    const memos = marks.filter(b => b.memo), plain = marks.filter(b => !b.memo);
+    if (memos.length) {
+      sheetList('Memos', memos.map(b => ({
+        text: b.memo,
+        sub: doc.spans[b.i].textContent,
+        onClick: () => jumpTo(b.i),
+        onEdit: () => { closeMenus(); editMemo(b.i); },
+        onRemove: () => { toggleBookmark(b.i); showContents(); },
       })));
-    } else {
+    }
+    if (plain.length) {
+      sheetList('Bookmarks', plain.map(b => ({
+        text: doc.spans[b.i].textContent,
+        onClick: () => jumpTo(b.i),
+        onRemove: () => { toggleBookmark(b.i); showContents(); },
+      })));
+    }
+    if (!marks.length) {
       const p = document.createElement('p');
       p.className = 'sheet-empty';
       p.textContent = 'No bookmarks yet — tap a sentence or 🔖.';
@@ -916,11 +1021,12 @@
   document.getElementById('r-fwd').addEventListener('click', () => seekBy(15));
   function showSpeed() {
     rSheet.textContent = '';
-    segRow('Speed', SPEEDS.map(v => [v, v + 'x']), SPEEDS[speedIdx], v => {
-      speedIdx = SPEEDS.indexOf(v);
-      audio.playbackRate = v;
-      buildSpeedPills();
-    }, showSpeed);
+    const h = document.createElement('h3');
+    h.textContent = 'Speed';
+    const row = document.createElement('div');
+    row.className = 'speed-pills';
+    rSheet.append(h, row);
+    speedControls(row, showSpeed);
     rSheet.hidden = false;
   }
   document.getElementById('r-speed').addEventListener('click', () => {
@@ -936,17 +1042,11 @@
   // ── Init ──────────────────────────────────────────────────
   function init() {
     buildSpeedPills();
+    sleepControls(document.getElementById('sleep-pills'));
     loadLibrary();
     checkUrlParam();
   }
 
-  if (isAuthenticated()) {
-    loginScreen.classList.add('hidden');
-    appEl.classList.add('visible');
-    init();
-  } else {
-    loginInput.focus();
-  }
 
   // ── Helpers ───────────────────────────────────────────────
   function fmt(s) {
@@ -1142,7 +1242,7 @@
     setAuthor(null);
     document.getElementById('no-audio-msg').style.display = 'none';
     document.getElementById('player-controls').classList.remove('player-hidden');
-    audio.playbackRate = SPEEDS[speedIdx];
+    audio.playbackRate = speed;
     playHint.hidden = true;
     if (!autoplay) { playBtn.textContent = '▶'; return; }
     audio.play().then(() => { playBtn.textContent = '⏸'; }).catch(() => {
@@ -1167,7 +1267,7 @@
     const pos = currentKey ? getPos(currentKey) : null;
     if (pendingSeek !== null) { audio.currentTime = pendingSeek; pendingSeek = null; }
     else if (pos && pos.t > 10 && pos.t < audio.duration - 10) audio.currentTime = pos.t;
-    audio.playbackRate = SPEEDS[speedIdx];
+    audio.playbackRate = speed;
   });
   audio.addEventListener('pause', savePos);
   audio.addEventListener('pause', () => { rPlay.textContent = '▶'; rFollow.hidden = true; });
@@ -1244,22 +1344,100 @@
   });
 
   // ── Speed ─────────────────────────────────────────────────
-  function buildSpeedPills() {
-    try { localStorage.setItem(SPEED_KEY, String(SPEEDS[speedIdx])); } catch (_) {}
-    document.getElementById('r-speed').textContent = SPEEDS[speedIdx] + 'x';
-    while (speedPills.firstChild) speedPills.removeChild(speedPills.firstChild);
-    SPEEDS.forEach((s, i) => {
-      const pill = document.createElement('button');
-      pill.className = 'speed-pill' + (i === speedIdx ? ' active' : '');
-      pill.textContent = s + 'x';
-      pill.addEventListener('click', () => {
-        speedIdx = i;
-        audio.playbackRate = s;
-        buildSpeedPills();
-      });
-      speedPills.appendChild(pill);
-    });
+  const fmtSpeed = v => Number(v.toFixed(2)) + 'x';
+  function setSpeed(v) {
+    speed = Math.round(Math.min(SPEED_MAX, Math.max(SPEED_MIN, v)) * 100) / 100;
+    audio.playbackRate = speed;
+    buildSpeedPills();
   }
+
+  // [−] 1.05x [+]  0.8x 0.9x 1x …
+  function speedControls(container, onChange) {
+    container.textContent = '';
+    const pill = (label, active, fn) => {
+      const b = document.createElement('button');
+      b.className = 'speed-pill' + (active ? ' active' : '');
+      b.textContent = label;
+      b.addEventListener('click', () => { fn(); if (onChange) onChange(); });
+      container.appendChild(b);
+    };
+    pill('−', false, () => setSpeed(speed - SPEED_STEP));
+    const val = document.createElement('span');
+    val.className = 'speed-value';
+    val.textContent = fmtSpeed(speed);
+    container.appendChild(val);
+    pill('+', false, () => setSpeed(speed + SPEED_STEP));
+    SPEED_PRESETS.forEach(v => pill(fmtSpeed(v), Math.abs(v - speed) < 0.001, () => setSpeed(v)));
+  }
+
+  function buildSpeedPills() {
+    try { localStorage.setItem(SPEED_KEY, String(speed)); } catch (_) {}
+    document.getElementById('r-speed').textContent = fmtSpeed(speed);
+    speedControls(speedPills);
+  }
+
+  // ── Sleep timer ───────────────────────────────────────────
+  // Counts wall-clock time from when it is set; "End" = stop at the end of this file
+  const SLEEP_OPTIONS = [[0, 'Off'], [15, '15m'], [30, '30m'], [45, '45m'], [60, '60m'], ['end', 'End']];
+  let sleepAt  = null;   // ms timestamp, or null
+  let sleepEnd = false;
+
+  function setSleep(v) {
+    sleepAt = typeof v === 'number' && v > 0 ? Date.now() + v * 60000 : null;
+    sleepEnd = v === 'end';
+    sleepControls(document.getElementById('sleep-pills'));
+    if (!rSheet.hidden && rSheet.dataset.kind === 'sleep') showSleep();
+    tickSleep();
+  }
+  function sleepChoice() { return sleepEnd ? 'end' : sleepAt ? 'timer' : 0; }
+
+  function sleepControls(container, onChange) {
+    container.textContent = '';
+    SLEEP_OPTIONS.forEach(([v, label]) => {
+      const b = document.createElement('button');
+      const active = v === sleepChoice() || (v === 0 && !sleepChoice());
+      b.className = 'speed-pill' + (active && v !== 0 ? ' active' : '');
+      b.textContent = label;
+      b.addEventListener('click', () => { setSleep(v); if (onChange) onChange(); });
+      container.appendChild(b);
+    });
+    const left = document.createElement('span');
+    left.className = 'speed-value sleep-left';
+    container.appendChild(left);
+    tickSleep();
+  }
+
+  // once a second (and on timeupdate, which keeps firing in the background on iOS): labels + stop
+  function tickSleep() {
+    if (sleepAt && Date.now() >= sleepAt) {
+      sleepAt = null;
+      if (!audio.paused) togglePlay();
+      sleepControls(document.getElementById('sleep-pills'));
+      if (!rSheet.hidden && rSheet.dataset.kind === 'sleep') showSleep();
+    }
+    const label = sleepEnd ? 'end' : sleepAt ? fmt((sleepAt - Date.now()) / 1000) : '';
+    document.getElementById('r-sleep').textContent = label ? '🌙 ' + label : '🌙';
+    document.querySelectorAll('.sleep-left').forEach(el => { el.textContent = label; });
+  }
+  setInterval(tickSleep, 1000);
+  audio.addEventListener('timeupdate', tickSleep);
+  audio.addEventListener('ended', () => { if (sleepEnd) setSleep(0); });
+
+  function showSleep() {
+    rSheet.textContent = '';
+    const h = document.createElement('h3');
+    h.textContent = 'Sleep timer';
+    const row = document.createElement('div');
+    row.className = 'speed-pills';
+    rSheet.append(h, row);
+    sleepControls(row, showSleep);
+    rSheet.hidden = false;
+  }
+  document.getElementById('r-sleep').addEventListener('click', () => {
+    const open = !rSheet.hidden && rSheet.dataset.kind === 'sleep';
+    closeMenus();
+    if (!open) { rSheet.dataset.kind = 'sleep'; rSheet.classList.add('bottom'); showSleep(); }
+  });
 
   // ── Download ──────────────────────────────────────────────
   document.getElementById('download-btn').addEventListener('click', () => {
@@ -1287,11 +1465,20 @@
       case ' ':          e.preventDefault(); togglePlay(); break;
       case 'ArrowLeft':  e.preventDefault(); seekBy(-30); break;
       case 'ArrowRight': e.preventDefault(); seekBy(15); break;
-      case 'ArrowUp':    e.preventDefault(); if (speedIdx < SPEEDS.length - 1) { speedIdx++; audio.playbackRate = SPEEDS[speedIdx]; buildSpeedPills(); } break;
-      case 'ArrowDown':  e.preventDefault(); if (speedIdx > 0) { speedIdx--; audio.playbackRate = SPEEDS[speedIdx]; buildSpeedPills(); } break;
+      case 'ArrowUp':    e.preventDefault(); setSpeed(speed + SPEED_STEP); break;
+      case 'ArrowDown':  e.preventDefault(); setSpeed(speed - SPEED_STEP); break;
       case 'd': case 'D': document.getElementById('download-btn').click(); break;
     }
   });
+
+  // ── Start (last, so every const/let above is initialised) ──
+  if (isAuthenticated()) {
+    loginScreen.classList.add('hidden');
+    appEl.classList.add('visible');
+    init();
+  } else {
+    loginInput.focus();
+  }
 </script>
 </body>
 </html>
