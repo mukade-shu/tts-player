@@ -17,7 +17,20 @@
       --text: #f5f5f7;
       --text-muted: #8e8e93;
       --red: #ff453a;
+      --active: #1a2a3a;
+      --hl: rgba(10, 132, 255, 0.18);
       --sidebar: 280px;
+    }
+    /* Reader themes (Aa → Theme) recolour the whole app */
+    :root[data-theme="light"] {
+      --bg: #fff; --surface: #f5f5f7; --surface2: #e9e9ee; --border: #d1d1d6;
+      --accent: #007aff; --accent-hover: #3395ff; --text: #1c1c1e; --text-muted: #6e6e73;
+      --active: #e3eefc; --hl: rgba(0, 122, 255, 0.12);
+    }
+    :root[data-theme="sepia"] {
+      --bg: #f4ecd8; --surface: #ece2c9; --surface2: #e2d6b8; --border: #d3c4a0;
+      --accent: #a0522d; --accent-hover: #b8653d; --text: #3b2f1e; --text-muted: #7a6a50;
+      --active: #e6d3ad; --hl: rgba(160, 82, 45, 0.15);
     }
 
     body {
@@ -86,7 +99,7 @@
     }
     .library-item:last-child { border-bottom: none; }
     .library-item:hover { background: var(--surface2); }
-    .library-item.active { background: #1a2a3a; }
+    .library-item.active { background: var(--active); }
 
     .lib-info { flex: 1; min-width: 0; }
     .lib-title { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.4; }
@@ -171,8 +184,68 @@
     .shortcut { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-muted); }
     kbd { background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; padding: 2px 6px; font-size: 10px; font-family: inherit; }
 
+    /* Reader (read-along text over the whole screen) */
+    .lib-read { background: none; border: 1px solid var(--border); color: var(--text-muted); border-radius: 6px; padding: 2px 6px; font-size: 12px; cursor: pointer; flex-shrink: 0; }
+    .lib-read:hover { border-color: var(--text-muted); }
+    body.reading { overflow: hidden; }
+    #reader { position: fixed; inset: 0; z-index: 50; background: var(--bg); color: var(--text); display: flex; flex-direction: column; }
+    #reader[hidden] { display: none; }
+    .reader-bar { display: flex; align-items: center; gap: 6px; padding: 8px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .r-title { flex: 1; min-width: 0; font-size: 13px; font-weight: 600; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; }
+    .r-btn { background: none; border: 1px solid transparent; color: var(--text); border-radius: 8px; min-width: 36px; height: 36px; padding: 0 8px; font-size: 14px; font-family: inherit; cursor: pointer; white-space: nowrap; }
+    .r-btn:hover { border-color: var(--border); }
+    .reader-scroll { flex: 1; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+    .reader-text { position: relative; max-width: 38em; margin: 0 auto; padding: 32px 28px 40vh; font-size: var(--r-size, 19px); line-height: var(--r-lh, 1.75); font-family: var(--r-font); overflow-wrap: break-word; }
+    .reader-text p { margin-bottom: 1em; }
+    .reader-text h2, .reader-text h3, .reader-text h4 { font-weight: 600; line-height: 1.3; margin: 1.4em 0 0.8em; }
+    .reader-text h2 { font-size: 1.4em; }
+    .reader-text h3 { font-size: 1.2em; }
+    .reader-text h4 { font-size: 1.05em; }
+    .reader-text .s { cursor: pointer; border-radius: 3px; -webkit-box-decoration-break: clone; box-decoration-break: clone; transition: background 0.2s; }
+    .reader-text .s.cur { background: var(--hl); }
+    .reader-text .s.sel { outline: 2px solid var(--accent); outline-offset: 1px; }
+    .reader-text .s.bm { text-decoration: underline dotted var(--accent); text-decoration-thickness: 2px; text-underline-offset: 4px; }
+    .reader-text .s.flash { background: var(--hl); }
+    .r-accent { position: absolute; left: 10px; width: 4px; border-radius: 2px; background: var(--accent); transition: top 0.25s, height 0.25s; pointer-events: none; }
+    .r-accent[hidden] { display: none; }
+    .r-msg { color: var(--text-muted); text-align: center; padding-top: 30vh; font-family: -apple-system, sans-serif; font-size: 14px; }
+    .r-next { display: block; margin: 2.5em auto 0; font-size: 15px; }
+    .r-follow { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(84px + env(safe-area-inset-bottom)); background: var(--accent); color: #fff; border: none; border-radius: 18px; padding: 8px 16px; font-size: 13px; font-family: inherit; cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,0.3); }
+    .r-follow[hidden] { display: none; }
+    .reader-player { border-top: 1px solid var(--border); background: var(--surface); flex-shrink: 0; padding-bottom: env(safe-area-inset-bottom); }
+    .r-progress { height: 3px; background: var(--border); }
+    .r-progress > div { height: 100%; width: 0; background: var(--accent); }
+    .r-controls { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 12px; max-width: 520px; margin: 0 auto; }
+    .r-controls .time { min-width: 52px; }
+    .r-controls .r-btn { border-color: var(--border); background: var(--surface2); font-size: 12px; }
+    .r-controls .r-play { background: var(--accent); border-color: var(--accent); color: #fff; border-radius: 50%; width: 46px; height: 46px; font-size: 18px; }
+    .sentence-menu { position: fixed; z-index: 60; display: flex; gap: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 4px; box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
+    .sentence-menu[hidden] { display: none; }
+    .sentence-menu button { background: none; border: none; color: var(--text); font-size: 13px; font-family: inherit; padding: 8px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+    .sentence-menu button:hover { background: var(--surface2); }
+    .sheet { position: absolute; z-index: 55; top: 54px; right: 12px; width: min(360px, calc(100% - 24px)); max-height: 70vh; overflow-y: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px; box-shadow: 0 8px 30px rgba(0,0,0,0.35); display: flex; flex-direction: column; gap: 12px; }
+    .sheet[hidden] { display: none; }
+    .sheet h3 { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .sheet-list { list-style: none; display: flex; flex-direction: column; }
+    .sheet-list li { display: flex; align-items: center; gap: 8px; padding: 9px 4px; border-bottom: 1px solid var(--border); font-size: 13px; cursor: pointer; }
+    .sheet-list li:last-child { border-bottom: none; }
+    .sheet-list li.current { color: var(--accent); font-weight: 600; }
+    .sheet-list li.disabled { color: var(--text-muted); cursor: default; }
+    .sheet-list li span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sheet-list .indent { padding-left: 18px; }
+    .sheet-empty { font-size: 12px; color: var(--text-muted); }
+    .seg { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+    .seg button { flex: 1; background: var(--surface2); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 8px 6px; font-size: 13px; font-family: inherit; cursor: pointer; }
+    .seg button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .seg .val { flex: 1; text-align: center; font-size: 13px; color: var(--text-muted); }
+    .toast { position: fixed; z-index: 70; left: 50%; top: 64px; transform: translateX(-50%); background: var(--text); color: var(--bg); border-radius: 16px; padding: 6px 14px; font-size: 13px; pointer-events: none; }
+    .toast[hidden] { display: none; }
+
     /* Mobile */
     @media (max-width: 600px) {
+      .reader-text { padding: 20px 20px 40vh; }
+      .r-accent { left: 6px; width: 3px; }
+      .r-controls .time { min-width: 0; font-size: 11px; }
       body { overflow: auto; }
       #app.visible { flex-direction: column; height: auto; }
       .sidebar { width: 100%; height: auto; border-right: none; border-bottom: 1px solid var(--border); }
@@ -255,7 +328,8 @@
             <span class="volume-icon">🔊</span>
             <input type="range" id="volume" min="0" max="1" step="0.05" value="1" aria-label="Volume">
           </div>
-          <div class="bottom-row">
+          <div class="bottom-row" style="gap:8px;">
+            <button class="btn btn-secondary" id="text-btn" hidden>📖 Text</button>
             <button class="btn btn-secondary" id="download-btn">⬇ Download</button>
           </div>
         </div>
@@ -276,6 +350,37 @@
 
 </div>
 
+<div id="reader" hidden>
+  <div class="reader-bar">
+    <button class="r-btn" id="r-close" aria-label="Hide text">✕</button>
+    <div class="r-title" id="r-title"></div>
+    <button class="r-btn" id="r-toc" aria-label="Contents and bookmarks">☰</button>
+    <button class="r-btn" id="r-mark" aria-label="Bookmark">🔖</button>
+    <button class="r-btn" id="r-view" aria-label="Display settings">Aa</button>
+  </div>
+  <div class="reader-scroll" id="r-scroll">
+    <article class="reader-text" id="r-text"></article>
+  </div>
+  <div class="sheet" id="r-sheet" hidden></div>
+  <button class="r-follow" id="r-follow" hidden>↓ Back to audio</button>
+  <div class="reader-player">
+    <div class="r-progress"><div id="r-progress"></div></div>
+    <div class="r-controls">
+      <span class="time" id="r-time">0:00</span>
+      <button class="r-btn" id="r-back">⏪ 30s</button>
+      <button class="r-btn r-play" id="r-play">▶</button>
+      <button class="r-btn" id="r-fwd">15s ⏩</button>
+      <button class="r-btn" id="r-speed">1x</button>
+      <span class="time end" id="r-left">0:00</span>
+    </div>
+  </div>
+</div>
+<div class="sentence-menu" id="r-menu" hidden>
+  <button id="r-play-here">▶ Play from here</button>
+  <button id="r-mark-here">🔖 Bookmark</button>
+</div>
+<div class="toast" id="toast" hidden></div>
+
 <audio id="audio"></audio>
 
 <script>
@@ -284,8 +389,9 @@
   const PASSWORD   = 'kaeru';
   const AUTH_KEY   = 'tts_auth_v1';
   const AUTH_TOKEN = btoa(PASSWORD + '_device_trusted');
-  // Served by GitHub Pages as audio/mpeg; GitHub Release downloads (octet-stream) don't play on iOS
-  const AUDIO_BASE = 'audio';
+  // Audio + read-along JSON live in Cloudflare R2 (audio/mpeg with range requests; CORS allows this site).
+  // GitHub Release downloads (octet-stream) don't play on iOS
+  const AUDIO_BASE = 'https://pub-4b7fc72b39854d4fa39fc78a9d0bd6e9.r2.dev/audio';
 
   // ── Auth ──────────────────────────────────────────────────
   const loginScreen = document.getElementById('login-screen');
@@ -359,6 +465,8 @@
   let lastSaved        = 0;
   let heardSecs        = 0;  // seconds actually played since load (seeks excluded)
   let lastTime         = 0;
+  let pendingSeek      = null;  // seek requested before the audio metadata arrived (iOS loads on play)
+  let currentItem      = null;  // library entry of the loaded audio (null for local files)
 
   // ── Resume position ───────────────────────────────────────
   function getPos(name) {
@@ -372,6 +480,438 @@
   function clearPos() {
     if (currentKey) try { localStorage.removeItem(POS_PREFIX + currentKey); } catch (_) {}
   }
+
+  // ── Reader (read-along text) ──────────────────────────────
+  // tts-edge.py saves audio/<name>.json = { lang, paras: [{ h?, s: [[startSecond, sentence], …] }] };
+  // library.json points to it with "text". Per device: tts_read:<file> (reading position),
+  // tts_bm:<file> (bookmarked sentence indexes), tts_view (theme / size / spacing / font).
+  const READ_PREFIX = 'tts_read:', BM_PREFIX = 'tts_bm:', VIEW_KEY = 'tts_view';
+  const readerEl = document.getElementById('reader');
+  const rScroll  = document.getElementById('r-scroll');
+  const rText    = document.getElementById('r-text');
+  const rSheet   = document.getElementById('r-sheet');
+  const rMenu    = document.getElementById('r-menu');
+  const rFollow  = document.getElementById('r-follow');
+  const rPlay    = document.getElementById('r-play');
+  const textBtn  = document.getElementById('text-btn');
+  const rAccent  = document.createElement('div');
+  rAccent.className = 'r-accent';
+  const transcripts = {};
+  let doc     = null;   // { item, lang, times, spans, heads } of the text on screen
+  let curIdx  = -1;     // sentence being spoken
+  let selIdx  = -1;     // sentence tapped (menu open)
+  let follow  = true;   // scroll along with the audio until the reader scrolls by hand
+
+  function loadJSON(key, fallback) {
+    try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch (_) { return fallback; }
+  }
+  function saveJSON(key, value) {
+    try { localStorage.setItem(key, JSON.stringify(value)); } catch (_) {}
+  }
+
+  function setCurrentItem(item) {
+    currentItem = item;
+    textBtn.hidden = !(item && item.text);
+  }
+  textBtn.addEventListener('click', () => { if (currentItem) openReader(currentItem); });
+
+  // Chapters: entries with the same "book", or the same title before " — " ("Traumatized — Introduction")
+  function bookOf(item) {
+    if (item.book) return item.book;
+    const t = item.title || '';
+    return t.includes(' — ') ? t.split(' — ')[0] : null;
+  }
+  function chaptersOf(item) {
+    const book = bookOf(item);
+    return book ? libraryItems.filter(i => bookOf(i) === book) : [item];
+  }
+
+  function getTranscript(item) {
+    if (!transcripts[item.filename]) {
+      transcripts[item.filename] = fetch(resolveAudioUrl(item.text)).then(r => {
+        if (!r.ok) throw new Error(r.status);
+        return r.json();
+      }).catch(err => { delete transcripts[item.filename]; throw err; });
+    }
+    return transcripts[item.filename];
+  }
+
+  function rMessage(text) {
+    rText.textContent = '';
+    const p = document.createElement('p');
+    p.className = 'r-msg';
+    p.textContent = text;
+    rText.appendChild(p);
+  }
+
+  async function openReader(item) {
+    readerEl.hidden = false;
+    document.body.classList.add('reading');
+    document.getElementById('r-title').textContent = item.title || item.filename;
+    closeMenus();
+    updateReaderTime();
+    if (doc && doc.item.filename === item.filename) {
+      syncReader();
+      placeAccent();
+      if (follow && !audio.paused) scrollToSentence(curIdx, false);
+      return;
+    }
+    doc = null;
+    rMessage('Loading…');
+    let data;
+    try { data = await getTranscript(item); } catch (_) { rMessage('Could not load the text'); return; }
+    if (readerEl.hidden || currentKey !== item.filename) return;  // closed or switched while loading
+    renderText(item, data);
+    // playing → follow the voice; otherwise back to where reading stopped (or the audio position)
+    const saved = loadJSON(READ_PREFIX + item.filename, null);
+    const start = !audio.paused || !saved ? indexAt(audio.currentTime) : Math.min(saved.i, doc.spans.length - 1);
+    curIdx = -1;
+    follow = true;
+    syncReader();
+    scrollToSentence(start, false);
+  }
+
+  function closeReader() {
+    saveReadPos();
+    readerEl.hidden = true;
+    document.body.classList.remove('reading');
+    closeMenus();
+  }
+
+  function renderText(item, data) {
+    rText.textContent = '';
+    rText.lang = data.lang || '';
+    const times = [], spans = [], heads = [];
+    const gap = data.lang === 'ja' ? '' : ' ';
+    data.paras.forEach(p => {
+      const el = document.createElement(p.h ? 'h' + Math.min(p.h + 1, 4) : 'p');
+      if (p.h) heads.push({ level: p.h, text: p.s.map(s => s[1]).join(gap), i: spans.length });
+      p.s.forEach(([t, s], k) => {
+        if (k) el.appendChild(document.createTextNode(gap));
+        const span = document.createElement('span');
+        span.className = 's';
+        span.dataset.i = spans.length;
+        span.textContent = s;
+        times.push(t);
+        spans.push(span);
+        el.appendChild(span);
+      });
+      rText.appendChild(el);
+    });
+    const chapters = chaptersOf(item);
+    const next = chapters[chapters.findIndex(c => c.filename === item.filename) + 1];
+    if (next) {
+      const btn = document.createElement('button');
+      btn.className = 'btn btn-secondary r-next';
+      btn.textContent = 'Next: ' + (next.title || next.filename) + ' →';
+      btn.addEventListener('click', () => openChapter(next));
+      rText.appendChild(btn);
+    }
+    rText.appendChild(rAccent);
+    doc = { item, lang: data.lang, times, spans, heads };
+    markBookmarks();
+  }
+
+  function openChapter(item) {
+    selectItem(item, null, null, false);
+    renderLibrary();
+    if (item.text) openReader(item);
+    else closeReader();
+  }
+
+  // last sentence that starts at or before t
+  function indexAt(t) {
+    if (!doc || !doc.times.length) return 0;
+    let lo = 0, hi = doc.times.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi + 1) >> 1;
+      if (doc.times[mid] <= t + 0.05) lo = mid; else hi = mid - 1;
+    }
+    return lo;
+  }
+
+  function updateReaderTime() {
+    const d = audio.duration, t = audio.currentTime;
+    document.getElementById('r-time').textContent = fmt(t);
+    document.getElementById('r-left').textContent = isFinite(d) ? '−' + fmt(Math.max(0, d - t) / audio.playbackRate) : '';
+    document.getElementById('r-progress').style.width = isFinite(d) && d ? (t / d * 100) + '%' : '0';
+  }
+
+  function syncReader() {
+    if (readerEl.hidden) return;
+    updateReaderTime();
+    if (!doc || doc.item.filename !== currentKey) return;
+    const i = indexAt(audio.currentTime);
+    if (i === curIdx) return;
+    if (curIdx >= 0 && doc.spans[curIdx]) doc.spans[curIdx].classList.remove('cur');
+    curIdx = i;
+    doc.spans[i].classList.add('cur');
+    placeAccent();
+    if (follow && !audio.paused) scrollToSentence(i, true);
+    if (!audio.paused) saveJSON(READ_PREFIX + doc.item.filename, { i });
+  }
+
+  // the bar beside the lines of the spoken sentence, however many lines it wraps to on this screen
+  function placeAccent() {
+    const span = doc && doc.spans[curIdx];
+    const rects = span ? span.getClientRects() : [];
+    rAccent.hidden = !rects.length;
+    if (!rects.length) return;
+    const base = rText.getBoundingClientRect();
+    const top = rects[0].top - base.top;
+    rAccent.style.top = top + 'px';
+    rAccent.style.height = (rects[rects.length - 1].bottom - base.top - top) + 'px';
+  }
+
+  function scrollToSentence(i, smooth) {
+    const span = doc && doc.spans[i];
+    if (!span) return;
+    const top = rScroll.scrollTop + span.getBoundingClientRect().top - rScroll.getBoundingClientRect().top
+      - rScroll.clientHeight * 0.3;
+    rScroll.scrollTo({ top: Math.max(0, top), behavior: smooth ? 'smooth' : 'auto' });
+  }
+
+  // first sentence visible at the top of the screen
+  function topSentence() {
+    if (!doc || !doc.spans.length) return 0;
+    const edge = rScroll.getBoundingClientRect().top + 8;
+    let lo = 0, hi = doc.spans.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (doc.spans[mid].getBoundingClientRect().bottom > edge) hi = mid; else lo = mid + 1;
+    }
+    return lo;
+  }
+
+  function saveReadPos() {
+    if (doc && !readerEl.hidden) saveJSON(READ_PREFIX + doc.item.filename, { i: follow && !audio.paused ? curIdx : topSentence() });
+  }
+
+  // scrolling by hand stops following the voice until "Back to audio"
+  function stopFollowing() {
+    follow = false;
+    rFollow.hidden = audio.paused;
+    closeMenus();
+  }
+  rScroll.addEventListener('wheel', stopFollowing, { passive: true });
+  rScroll.addEventListener('touchmove', stopFollowing, { passive: true });
+  let readSaveTimer = null;
+  rScroll.addEventListener('scroll', () => {
+    if (follow) return;
+    clearTimeout(readSaveTimer);
+    readSaveTimer = setTimeout(saveReadPos, 600);
+  }, { passive: true });
+  rFollow.addEventListener('click', () => {
+    follow = true;
+    rFollow.hidden = true;
+    scrollToSentence(curIdx, true);
+  });
+  window.addEventListener('resize', placeAccent);
+
+  // ── Reader: tap a sentence → play from here / bookmark ──
+  rText.addEventListener('click', e => {
+    const span = e.target.closest('.s');
+    if (!span) { closeMenus(); return; }
+    if (rSheet.hidden === false) { closeMenus(); return; }
+    if (doc.spans[selIdx]) doc.spans[selIdx].classList.remove('sel');
+    selIdx = +span.dataset.i;
+    span.classList.add('sel');
+    document.getElementById('r-mark-here').textContent = getBookmarks().includes(selIdx) ? '🔖 Remove bookmark' : '🔖 Bookmark';
+    rMenu.hidden = false;
+    const r = span.getClientRects()[0], m = rMenu.getBoundingClientRect();
+    const below = r.bottom + 8 + m.height < window.innerHeight - 90;
+    rMenu.style.top = (below ? r.bottom + 8 : r.top - m.height - 8) + 'px';
+    rMenu.style.left = Math.max(8, Math.min(window.innerWidth - m.width - 8, r.left)) + 'px';
+  });
+  document.getElementById('r-play-here').addEventListener('click', () => {
+    const t = doc.times[selIdx];
+    closeMenus();
+    if (audio.readyState >= 1) audio.currentTime = t; else pendingSeek = t;
+    follow = true;
+    rFollow.hidden = true;
+    if (audio.paused) togglePlay();
+  });
+  document.getElementById('r-mark-here').addEventListener('click', () => {
+    toggleBookmark(selIdx);
+    closeMenus();
+  });
+
+  function closeMenus() {
+    rMenu.hidden = true;
+    rSheet.hidden = true;
+    if (doc && doc.spans[selIdx]) doc.spans[selIdx].classList.remove('sel');
+    selIdx = -1;
+  }
+
+  let toastTimer = null;
+  function toast(text) {
+    const el = document.getElementById('toast');
+    el.textContent = text;
+    el.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { el.hidden = true; }, 1500);
+  }
+
+  // ── Reader: bookmarks ──
+  function getBookmarks() { return doc ? loadJSON(BM_PREFIX + doc.item.filename, []) : []; }
+  function toggleBookmark(i) {
+    if (!doc || i < 0) return;
+    const marks = getBookmarks();
+    const on = !marks.includes(i);
+    saveJSON(BM_PREFIX + doc.item.filename, on ? [...marks, i].sort((a, b) => a - b) : marks.filter(m => m !== i));
+    markBookmarks();
+    toast(on ? 'Bookmarked' : 'Bookmark removed');
+  }
+  function markBookmarks() {
+    const marks = new Set(getBookmarks());
+    doc.spans.forEach((s, i) => s.classList.toggle('bm', marks.has(i)));
+  }
+  document.getElementById('r-mark').addEventListener('click', () => {
+    toggleBookmark(follow && !audio.paused && curIdx >= 0 ? curIdx : topSentence());
+  });
+
+  function jumpTo(i) {
+    closeMenus();
+    stopFollowing();
+    scrollToSentence(i, false);
+    const span = doc.spans[i];
+    span.classList.add('flash');
+    setTimeout(() => span.classList.remove('flash'), 1200);
+  }
+
+  // ── Reader: contents / chapters / bookmarks sheet ──
+  function sheetList(title, rows) {
+    const h = document.createElement('h3');
+    h.textContent = title;
+    rSheet.appendChild(h);
+    const ul = document.createElement('ul');
+    ul.className = 'sheet-list';
+    rows.forEach(r => {
+      const li = document.createElement('li');
+      if (r.cls) li.className = r.cls;
+      const span = document.createElement('span');
+      span.textContent = r.text;
+      li.appendChild(span);
+      if (r.onClick) li.addEventListener('click', r.onClick);
+      if (r.onRemove) {
+        const x = document.createElement('button');
+        x.className = 'btn-ghost';
+        x.textContent = '✕';
+        x.addEventListener('click', e => { e.stopPropagation(); r.onRemove(); });
+        li.appendChild(x);
+      }
+      ul.appendChild(li);
+    });
+    rSheet.appendChild(ul);
+  }
+
+  function showContents() {
+    if (!doc) return;
+    rSheet.textContent = '';
+    const chapters = chaptersOf(doc.item);
+    if (chapters.length > 1) {
+      sheetList('Chapters', chapters.map(c => {
+        const here = c.filename === doc.item.filename;
+        return {
+          text: c.title || c.filename,
+          cls: here ? 'current' : (c.text ? '' : 'disabled'),
+          onClick: here || !c.text ? null : () => { closeMenus(); openChapter(c); },
+        };
+      }));
+    }
+    if (doc.heads.length > 1) {
+      const top = Math.min(...doc.heads.map(h => h.level));
+      sheetList('Contents', doc.heads.map(h => ({ text: h.text, cls: h.level > top ? 'indent' : '', onClick: () => jumpTo(h.i) })));
+    }
+    const marks = getBookmarks();
+    if (marks.length) {
+      sheetList('Bookmarks', marks.filter(i => doc.spans[i]).map(i => ({
+        text: doc.spans[i].textContent,
+        onClick: () => jumpTo(i),
+        onRemove: () => { toggleBookmark(i); showContents(); },
+      })));
+    } else {
+      const p = document.createElement('p');
+      p.className = 'sheet-empty';
+      p.textContent = 'No bookmarks yet — tap a sentence or 🔖.';
+      rSheet.appendChild(p);
+    }
+    rSheet.hidden = false;
+  }
+
+  // ── Reader: display settings ──
+  const FONTS = {
+    sans:  "-apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Segoe UI', sans-serif",
+    serif: "'Iowan Old Style', 'Hiragino Mincho ProN', 'Yu Mincho', Georgia, serif",
+  };
+  let view = Object.assign({ theme: 'dark', size: window.innerWidth < 600 ? 18 : 20, lh: 1.75, font: 'serif' }, loadJSON(VIEW_KEY, {}));
+  function applyView() {
+    if (view.theme === 'dark') delete document.documentElement.dataset.theme;
+    else document.documentElement.dataset.theme = view.theme;
+    rText.style.setProperty('--r-size', view.size + 'px');
+    rText.style.setProperty('--r-lh', view.lh);
+    rText.style.setProperty('--r-font', FONTS[view.font] || FONTS.serif);
+    saveJSON(VIEW_KEY, view);
+    placeAccent();
+    if (follow && !audio.paused) scrollToSentence(curIdx, false);  // text reflowed: keep the voice in view
+  }
+
+  function segRow(title, options, current, set) {
+    const h = document.createElement('h3');
+    h.textContent = title;
+    const row = document.createElement('div');
+    row.className = 'seg';
+    options.forEach(([value, label]) => {
+      const b = document.createElement('button');
+      b.textContent = label;
+      if (value === current) b.className = 'on';
+      b.addEventListener('click', () => { set(value); applyView(); showView(); });
+      row.appendChild(b);
+    });
+    rSheet.appendChild(h);
+    rSheet.appendChild(row);
+  }
+
+  function showView() {
+    rSheet.textContent = '';
+    segRow('Theme', [['dark', 'Dark'], ['light', 'Light'], ['sepia', 'Sepia']], view.theme, v => { view.theme = v; });
+    const h = document.createElement('h3');
+    h.textContent = 'Text size';
+    const row = document.createElement('div');
+    row.className = 'seg';
+    const minus = document.createElement('button'), plus = document.createElement('button'), val = document.createElement('span');
+    minus.textContent = 'A−'; plus.textContent = 'A+'; val.className = 'val'; val.textContent = view.size + 'px';
+    minus.addEventListener('click', () => { view.size = Math.max(13, view.size - 1); applyView(); showView(); });
+    plus.addEventListener('click',  () => { view.size = Math.min(32, view.size + 1); applyView(); showView(); });
+    row.append(minus, val, plus);
+    rSheet.append(h, row);
+    segRow('Line spacing', [[1.5, 'Tight'], [1.75, 'Normal'], [2.05, 'Loose']], view.lh, v => { view.lh = v; });
+    segRow('Font', [['serif', 'Serif'], ['sans', 'Sans']], view.font, v => { view.font = v; });
+    rSheet.hidden = false;
+  }
+
+  document.getElementById('r-toc').addEventListener('click', () => {
+    const open = !rSheet.hidden && rSheet.dataset.kind === 'toc';
+    closeMenus();
+    if (!open) { rSheet.dataset.kind = 'toc'; showContents(); }
+  });
+  document.getElementById('r-view').addEventListener('click', () => {
+    const open = !rSheet.hidden && rSheet.dataset.kind === 'view';
+    closeMenus();
+    if (!open) { rSheet.dataset.kind = 'view'; showView(); }
+  });
+  document.getElementById('r-close').addEventListener('click', closeReader);
+  rPlay.addEventListener('click', togglePlay);
+  document.getElementById('r-back').addEventListener('click', () => seekBy(-30));
+  document.getElementById('r-fwd').addEventListener('click', () => seekBy(15));
+  document.getElementById('r-speed').addEventListener('click', () => {
+    speedIdx = (speedIdx + 1) % SPEEDS.length;
+    audio.playbackRate = SPEEDS[speedIdx];
+    buildSpeedPills();
+  });
+  window.addEventListener('pagehide', saveReadPos);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) saveReadPos(); });
+  applyView();
 
   // ── Init ──────────────────────────────────────────────────
   function init() {
@@ -505,23 +1045,25 @@
       info.appendChild(bar);
     }
     li.appendChild(info);
+    if (item.text) {
+      // open the text without starting the audio (read-only, or start from any sentence)
+      const readBtn = document.createElement('button');
+      readBtn.className = 'lib-read';
+      readBtn.textContent = '📖';
+      readBtn.setAttribute('aria-label', 'Read text');
+      readBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        if (currentKey !== item.filename) selectItem(item, li, icon, false);
+        openReader(item);
+      });
+      li.appendChild(readBtn);
+    }
     li.appendChild(archiveBtn);
     li.appendChild(icon);
 
     li.addEventListener('click', () => {
       if (isDone) setFlag(DONE_KEY, item.filename, false);
-      currentFilename = item.filename;
-      currentBlob = null;
-      loadAudio(resolveAudioUrl(item.url || item.filename), item.title || item.filename);
-      setSource(item.source);
-      setAuthor(item.author);
-      if (activeLibItem) {
-        activeLibItem.el.classList.remove('active');
-        activeLibItem.icon.textContent = '▶';
-      }
-      activeLibItem = { el: li, icon };
-      li.classList.add('active');
-      icon.textContent = '⏸';
+      selectItem(item, li, icon, true);
     });
 
     if (currentKey === item.filename) {
@@ -529,11 +1071,29 @@
       if ('mediaSession' in navigator) navigator.mediaSession.metadata = new MediaMetadata({ title: item.title || item.filename });
       setSource(item.source);
       setAuthor(item.author);
+      setCurrentItem(item);
       activeLibItem = { el: li, icon };
       li.classList.add('active');
       icon.textContent = audio.paused ? '▶' : '⏸';
     }
     return li;
+  }
+
+  function selectItem(item, li, icon, autoplay) {
+    currentFilename = item.filename;
+    currentBlob = null;
+    loadAudio(resolveAudioUrl(item.url || item.filename), item.title || item.filename, autoplay);
+    setSource(item.source);
+    setAuthor(item.author);
+    setCurrentItem(item);
+    if (activeLibItem) {
+      activeLibItem.el.classList.remove('active');
+      activeLibItem.icon.textContent = '▶';
+    }
+    if (!li) return;
+    activeLibItem = { el: li, icon };
+    li.classList.add('active');
+    icon.textContent = autoplay ? '⏸' : '▶';
   }
 
   // ── URL param ─────────────────────────────────────────────
@@ -546,12 +1106,13 @@
   }
 
   // ── Audio load ────────────────────────────────────────────
-  function loadAudio(url, title) {
+  function loadAudio(url, title, autoplay = true) {
     if (currentObjectUrl) { URL.revokeObjectURL(currentObjectUrl); currentObjectUrl = null; }
     if (url.startsWith('blob:')) currentObjectUrl = url;
     savePos();
     heardSecs = 0;
     lastTime = 0;
+    pendingSeek = null;
     currentKey = currentBlob ? null : currentFilename;
     audio.src = url;
     currentUrl = url;
@@ -563,6 +1124,7 @@
     document.getElementById('player-controls').classList.remove('player-hidden');
     audio.playbackRate = SPEEDS[speedIdx];
     playHint.hidden = true;
+    if (!autoplay) { playBtn.textContent = '▶'; return; }
     audio.play().then(() => { playBtn.textContent = '⏸'; }).catch(() => {
       playBtn.textContent = '▶';
       playHint.textContent = 'Tap ▶ to play';
@@ -578,15 +1140,18 @@
     if (audio.duration) seekEl.value = (audio.currentTime / audio.duration) * 100;
     curTimeEl.textContent = fmt(audio.currentTime);
     if (Date.now() - lastSaved > 5000) savePos();
+    syncReader();
   });
   audio.addEventListener('loadedmetadata', () => {
     durEl.textContent = fmt(audio.duration);
     const pos = currentKey ? getPos(currentKey) : null;
-    if (pos && pos.t > 10 && pos.t < audio.duration - 10) audio.currentTime = pos.t;
+    if (pendingSeek !== null) { audio.currentTime = pendingSeek; pendingSeek = null; }
+    else if (pos && pos.t > 10 && pos.t < audio.duration - 10) audio.currentTime = pos.t;
     audio.playbackRate = SPEEDS[speedIdx];
   });
   audio.addEventListener('pause', savePos);
-  audio.addEventListener('play', () => { playHint.hidden = true; playBtn.textContent = '⏸'; });
+  audio.addEventListener('pause', () => { rPlay.textContent = '▶'; rFollow.hidden = true; });
+  audio.addEventListener('play', () => { playHint.hidden = true; playBtn.textContent = '⏸'; rPlay.textContent = '⏸'; });
   document.addEventListener('visibilitychange', () => { if (document.hidden) savePos(); });
   window.addEventListener('pagehide', savePos);
   audio.addEventListener('ended', () => {
@@ -654,12 +1219,14 @@
     currentFilename = file.name;
     fileNameEl.textContent = file.name;
     activeLibItem = null;
+    setCurrentItem(null);
     loadAudio(URL.createObjectURL(file), file.name);
   });
 
   // ── Speed ─────────────────────────────────────────────────
   function buildSpeedPills() {
     try { localStorage.setItem(SPEED_KEY, String(SPEEDS[speedIdx])); } catch (_) {}
+    document.getElementById('r-speed').textContent = SPEEDS[speedIdx] + 'x';
     while (speedPills.firstChild) speedPills.removeChild(speedPills.firstChild);
     SPEEDS.forEach((s, i) => {
       const pill = document.createElement('button');
@@ -696,6 +1263,7 @@
     const tag = document.activeElement.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA') return;
     switch (e.key) {
+      case 'Escape':     if (!readerEl.hidden) closeReader(); break;
       case ' ':          e.preventDefault(); togglePlay(); break;
       case 'ArrowLeft':  e.preventDefault(); seekBy(-30); break;
       case 'ArrowRight': e.preventDefault(); seekBy(15); break;
