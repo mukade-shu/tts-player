@@ -282,7 +282,8 @@
   const PASSWORD   = 'kaeru';
   const AUTH_KEY   = 'tts_auth_v1';
   const AUTH_TOKEN = btoa(PASSWORD + '_device_trusted');
-  const RELEASE_BASE = 'https://github.com/mukade-shu/tts-player/releases/download/audio';
+  // Served by GitHub Pages as audio/mpeg; GitHub Release downloads (octet-stream) don't play on iOS
+  const AUDIO_BASE = 'audio';
 
   // ── Auth ──────────────────────────────────────────────────
   const loginScreen = document.getElementById('login-screen');
@@ -388,7 +389,7 @@
 
   function resolveAudioUrl(src) {
     if (src.startsWith('http') || src.startsWith('blob:')) return src;
-    return RELEASE_BASE + '/' + src;
+    return AUDIO_BASE + '/' + encodeURIComponent(src);
   }
 
   function clearList() {
