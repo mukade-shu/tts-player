@@ -160,6 +160,7 @@
     .volume-row { display: flex; align-items: center; gap: 8px; }
     .volume-icon { font-size: 16px; color: var(--text-muted); }
     .bottom-row { display: flex; align-items: center; justify-content: flex-end; }
+    .track-author { font-size: 13px; color: var(--text); margin-top: -8px; }
     .track-source { font-size: 12px; color: var(--accent); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: -8px; }
     .track-source:hover { text-decoration: underline; }
     .play-hint { text-align: center; color: var(--accent); font-size: 12px; }
@@ -226,6 +227,7 @@
 
     <div class="card">
       <div class="card-title" id="track-title">Player</div>
+      <div class="track-author" id="track-author" hidden></div>
       <a class="track-source" id="track-source" target="_blank" rel="noopener" hidden></a>
       <p class="no-audio-msg" id="no-audio-msg">Select a file from the library or open a local file</p>
 
@@ -328,6 +330,12 @@
   const libraryList = document.getElementById('library-list');
   const playHint    = document.getElementById('play-hint');
   const sourceEl    = document.getElementById('track-source');
+  const authorEl    = document.getElementById('track-author');
+
+  function setAuthor(name) {
+    authorEl.hidden = !name;
+    authorEl.textContent = name || '';
+  }
 
   function setSource(url) {
     let host = '';
@@ -469,7 +477,7 @@
 
     const dateEl = document.createElement('div');
     dateEl.className = 'lib-date';
-    dateEl.textContent = (item.date || '') + (isDone ? ' · ✓ Played' : '');
+    dateEl.textContent = [item.date, item.author, isDone ? '✓ Played' : ''].filter(Boolean).join(' · ');
 
     const icon = document.createElement('span');
     icon.className = 'lib-play';
@@ -506,6 +514,7 @@
       currentBlob = null;
       loadAudio(resolveAudioUrl(item.url || item.filename), item.title || item.filename);
       setSource(item.source);
+      setAuthor(item.author);
       if (activeLibItem) {
         activeLibItem.el.classList.remove('active');
         activeLibItem.icon.textContent = '▶';
@@ -519,6 +528,7 @@
       document.getElementById('track-title').textContent = item.title || item.filename;
       if ('mediaSession' in navigator) navigator.mediaSession.metadata = new MediaMetadata({ title: item.title || item.filename });
       setSource(item.source);
+      setAuthor(item.author);
       activeLibItem = { el: li, icon };
       li.classList.add('active');
       icon.textContent = audio.paused ? '▶' : '⏸';
@@ -548,6 +558,7 @@
     document.getElementById('track-title').textContent = title;
     if ('mediaSession' in navigator) navigator.mediaSession.metadata = new MediaMetadata({ title });
     setSource(null);
+    setAuthor(null);
     document.getElementById('no-audio-msg').style.display = 'none';
     document.getElementById('player-controls').classList.remove('player-hidden');
     audio.playbackRate = SPEEDS[speedIdx];
