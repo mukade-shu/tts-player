@@ -510,10 +510,126 @@
     if (!currentKey || !audio.duration) return;
     try { localStorage.setItem(POS_PREFIX + currentKey, JSON.stringify({ t: audio.currentTime, d: audio.duration })); } catch (_) {}
     lastSaved = Date.now();
+    syncChanged(POS_PREFIX + currentKey, audio.paused);
   }
   function clearPos() {
     if (currentKey) try { localStorage.removeItem(POS_PREFIX + currentKey); } catch (_) {}
+    if (currentKey) syncChanged(POS_PREFIX + currentKey, true);
   }
+
+  // ── Sync between devices ──────────────────────────────────
+  // Resume positions, reading positions, bookmarks + memos, played/archived lists go to the
+  // tts-sync Worker (workspace/tools/tts-sync-worker). Per key the newest change wins.
+  // A device joins by opening the player once with #sync=<key> (the setup link).
+  const SYNC_URL = 'https://tts-sync.yoshikawa-akira.workers.dev/state';
+  const SYNC_KEY_STORE = 'tts_sync_key', SYNC_META = 'tts_sync_meta', SYNC_DIRTY = 'tts_sync_dirty';
+  const SYNCED_KEY = /^tts_(pos:|read:|bm:|done$|archived$)/;
+  let syncTimer = null, lastPush = 0, lastSync = null, syncError = false;
+
+  (() => {
+    const m = location.hash.match(/[#&]sync=([\w-]+)/);
+    if (!m) return;
+    try { localStorage.setItem(SYNC_KEY_STORE, m[1]); } catch (_) {}
+    history.replaceState(null, '', location.pathname + location.search);  // keep the key out of the address bar
+    // first join: offer this device's existing data with a very old timestamp (never beats the server)
+    const meta = loadJSON(SYNC_META, null), dirty = {};
+    if (!meta) {
+      const seed = {};
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (SYNCED_KEY.test(k)) { seed[k] = 2; dirty[k] = true; }
+      }
+      saveRaw(SYNC_META, seed);
+      saveRaw(SYNC_DIRTY, dirty);
+    }
+  })();
+
+  function syncKey() { try { return localStorage.getItem(SYNC_KEY_STORE); } catch (_) { return null; } }
+  function saveRaw(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch (_) {} }
+
+  // urgent (pause, bookmark, memo, played) → sent within a second; positions while playing → at most once a minute
+  function syncChanged(key, urgent) {
+    if (!SYNCED_KEY.test(key) || !syncKey()) return;
+    const meta = loadJSON(SYNC_META, {}), dirty = loadJSON(SYNC_DIRTY, {});
+    meta[key] = Date.now();
+    dirty[key] = true;
+    saveRaw(SYNC_META, meta);
+    saveRaw(SYNC_DIRTY, dirty);
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(pushSync, urgent ? 800 : Math.max(800, 60000 - (Date.now() - lastPush)));
+  }
+
+  async function syncRequest(body, keepalive) {
+    const res = await fetch(SYNC_URL, {
+      method: body ? 'POST' : 'GET', keepalive: !!keepalive,
+      headers: { 'Authorization': 'Bearer ' + syncKey(), 'Content-Type': 'application/json' },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    if (!res.ok) throw new Error(res.status);
+    return res.json();
+  }
+
+  async function pushSync(keepalive) {
+    clearTimeout(syncTimer);
+    if (!syncKey()) return;
+    const meta = loadJSON(SYNC_META, {}), dirty = loadJSON(SYNC_DIRTY, {});
+    const keys = Object.keys(dirty);
+    if (!keys.length) return;
+    const body = {};
+    keys.forEach(k => {
+      let v = null;
+      try { v = localStorage.getItem(k); } catch (_) {}
+      body[k] = { v, t: meta[k] || 2 };
+    });
+    lastPush = Date.now();
+    try {
+      const state = await syncRequest(body, keepalive);
+      const now = loadJSON(SYNC_DIRTY, {});
+      keys.forEach(k => { if ((loadJSON(SYNC_META, {})[k] || 0) === body[k].t) delete now[k]; });
+      saveRaw(SYNC_DIRTY, now);
+      applySync(state);
+    } catch (_) { syncError = true; }
+  }
+
+  async function pullSync() {
+    if (!syncKey()) return;
+    if (Object.keys(loadJSON(SYNC_DIRTY, {})).length) return pushSync();  // the POST answers with the state too
+    try { applySync(await syncRequest()); } catch (_) { syncError = true; }
+  }
+
+  // take every server value that is newer than this device's
+  function applySync(state) {
+    syncError = false;
+    lastSync = new Date();
+    const meta = loadJSON(SYNC_META, {});
+    let changed = false, posChanged = false;
+    for (const [k, rec] of Object.entries(state || {})) {
+      if (!SYNCED_KEY.test(k) || (meta[k] || 0) >= rec.t) continue;
+      try { rec.v === null ? localStorage.removeItem(k) : localStorage.setItem(k, rec.v); } catch (_) {}
+      meta[k] = rec.t;
+      changed = true;
+      if (k === POS_PREFIX + currentKey) posChanged = true;
+    }
+    if (!changed) return;
+    saveRaw(SYNC_META, meta);
+    // stopped here, continued on another device → jump to where that device stopped
+    if (posChanged && audio.paused && audio.readyState >= 1) {
+      const pos = getPos(currentKey);
+      if (pos) audio.currentTime = pos.t;
+    }
+    if (libraryItems.length) renderLibrary();
+    if (doc && !readerEl.hidden) markBookmarks();
+  }
+
+  function syncStatus() {
+    if (!syncKey()) return 'Off on this device — open the setup link once to turn it on.';
+    if (syncError) return 'On — last attempt failed (offline?); will retry.';
+    return lastSync ? 'On — last synced ' + lastSync.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'On';
+  }
+
+  document.addEventListener('visibilitychange', () => { if (document.hidden) pushSync(true); else pullSync(); });
+  window.addEventListener('pagehide', () => pushSync(true));
+  audio.addEventListener('pause', () => pushSync());
 
   // ── Reader (read-along text) ──────────────────────────────
   // tts-edge.py saves audio/<name>.json = { lang, paras: [{ h?, s: [[startSecond, sentence], …] }] };
@@ -541,6 +657,7 @@
   }
   function saveJSON(key, value) {
     try { localStorage.setItem(key, JSON.stringify(value)); } catch (_) {}
+    syncChanged(key, !key.startsWith(READ_PREFIX));
   }
 
   function setCurrentItem(item) {
@@ -1002,6 +1119,12 @@
     rSheet.append(h, row);
     segRow('Line spacing', [[1.5, 'Tight'], [1.75, 'Normal'], [2.05, 'Loose']], view.lh, v => { view.lh = v; });
     segRow('Font', [['serif', 'Serif'], ['sans', 'Sans']], view.font, v => { view.font = v; });
+    const sh = document.createElement('h3');
+    sh.textContent = 'Sync between devices';
+    const sp = document.createElement('p');
+    sp.className = 'sheet-empty';
+    sp.textContent = syncStatus();
+    rSheet.append(sh, sp);
     rSheet.hidden = false;
   }
 
@@ -1041,6 +1164,7 @@
 
   // ── Init ──────────────────────────────────────────────────
   function init() {
+    pullSync();
     buildSpeedPills();
     sleepControls(document.getElementById('sleep-pills'));
     loadLibrary();
@@ -1084,6 +1208,7 @@
     const set = getSet(key);
     on ? set.add(name) : set.delete(name);
     try { localStorage.setItem(key, JSON.stringify([...set])); } catch (_) {}
+    syncChanged(key, true);
   }
 
   let libraryItems = [];
