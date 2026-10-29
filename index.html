@@ -188,13 +188,14 @@
     .lib-read { background: none; border: 1px solid var(--border); color: var(--text-muted); border-radius: 6px; padding: 2px 6px; font-size: 12px; cursor: pointer; flex-shrink: 0; }
     .lib-read:hover { border-color: var(--text-muted); }
     body.reading { overflow: hidden; }
-    #reader { position: fixed; inset: 0; z-index: 50; background: var(--bg); color: var(--text); display: flex; flex-direction: column; }
+    #reader { position: fixed; inset: 0; z-index: 50; overflow: hidden; background: var(--bg); color: var(--text); display: flex; flex-direction: column; }
     #reader[hidden] { display: none; }
     .reader-bar { display: flex; align-items: center; gap: 6px; padding: 8px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
     .r-title { flex: 1; min-width: 0; font-size: 13px; font-weight: 600; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; }
     .r-btn { background: none; border: 1px solid transparent; color: var(--text); border-radius: 8px; min-width: 36px; height: 36px; padding: 0 8px; font-size: 14px; font-family: inherit; cursor: pointer; white-space: nowrap; }
     .r-btn:hover { border-color: var(--border); }
-    .reader-scroll { flex: 1; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+    /* vertical only: on iPhone/iPad sideways swipes moved the text (Akira) */
+    .reader-scroll { flex: 1; overflow-y: auto; overflow-x: hidden; touch-action: pan-y; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
     .reader-text { position: relative; max-width: 38em; margin: 0 auto; padding: 32px 28px 40vh; font-size: var(--r-size, 19px); line-height: var(--r-lh, 1.75); font-family: var(--r-font); overflow-wrap: break-word; }
     .reader-text p { margin-bottom: 1em; }
     .reader-text h2, .reader-text h3, .reader-text h4 { font-weight: 600; line-height: 1.3; margin: 1.4em 0 0.8em; }
@@ -202,7 +203,6 @@
     .reader-text h3 { font-size: 1.2em; }
     .reader-text h4 { font-size: 1.05em; }
     .reader-text .s { cursor: pointer; border-radius: 3px; -webkit-box-decoration-break: clone; box-decoration-break: clone; transition: background 0.2s; }
-    .reader-text .s.cur { background: var(--hl); }
     .reader-text .s.sel { outline: 2px solid var(--accent); outline-offset: 1px; }
     .reader-text .s.bm { text-decoration: underline dotted var(--accent); text-decoration-thickness: 2px; text-underline-offset: 4px; }
     .reader-text .s.flash { background: var(--hl); }
@@ -225,6 +225,7 @@
     .sentence-menu button:hover { background: var(--surface2); }
     .sheet { position: absolute; z-index: 55; top: 54px; right: 12px; width: min(360px, calc(100% - 24px)); max-height: 70vh; overflow-y: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px; box-shadow: 0 8px 30px rgba(0,0,0,0.35); display: flex; flex-direction: column; gap: 12px; }
     .sheet[hidden] { display: none; }
+    .sheet.bottom { top: auto; bottom: calc(76px + env(safe-area-inset-bottom)); right: 50%; transform: translateX(50%); }
     .sheet h3 { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
     .sheet-list { list-style: none; display: flex; flex-direction: column; }
     .sheet-list li { display: flex; align-items: center; gap: 8px; padding: 9px 4px; border-bottom: 1px solid var(--border); font-size: 13px; cursor: pointer; }
@@ -553,7 +554,7 @@
     if (doc && doc.item.filename === item.filename) {
       syncReader();
       placeAccent();
-      if (follow && !audio.paused) scrollToSentence(curIdx, false);
+      if (follow && !audio.paused && !inView(curIdx)) scrollToSentence(curIdx, false);
       return;
     }
     doc = null;
@@ -647,7 +648,7 @@
     curIdx = i;
     doc.spans[i].classList.add('cur');
     placeAccent();
-    if (follow && !audio.paused) scrollToSentence(i, true);
+    if (follow && !audio.paused && !inView(i)) scrollToSentence(i, true);
     if (!audio.paused) saveJSON(READ_PREFIX + doc.item.filename, { i });
   }
 
@@ -663,11 +664,20 @@
     rAccent.style.height = (rects[rects.length - 1].bottom - base.top - top) + 'px';
   }
 
+  // the text only moves when the spoken sentence leaves the screen; it then goes near the top,
+  // so the page stays still for as long as possible (Akira: as little movement as possible)
+  function inView(i) {
+    const rects = doc && doc.spans[i] ? doc.spans[i].getClientRects() : [];
+    if (!rects.length) return true;
+    const box = rScroll.getBoundingClientRect();
+    return rects[0].top >= box.top && rects[rects.length - 1].bottom <= box.bottom;
+  }
+
   function scrollToSentence(i, smooth) {
     const span = doc && doc.spans[i];
     if (!span) return;
     const top = rScroll.scrollTop + span.getBoundingClientRect().top - rScroll.getBoundingClientRect().top
-      - rScroll.clientHeight * 0.3;
+      - rScroll.clientHeight * 0.08;
     rScroll.scrollTo({ top: Math.max(0, top), behavior: smooth ? 'smooth' : 'auto' });
   }
 
@@ -853,10 +863,10 @@
     rText.style.setProperty('--r-font', FONTS[view.font] || FONTS.serif);
     saveJSON(VIEW_KEY, view);
     placeAccent();
-    if (follow && !audio.paused) scrollToSentence(curIdx, false);  // text reflowed: keep the voice in view
+    if (follow && !audio.paused && !inView(curIdx)) scrollToSentence(curIdx, false);  // text reflowed: keep the voice in view
   }
 
-  function segRow(title, options, current, set) {
+  function segRow(title, options, current, set, redraw = showView) {
     const h = document.createElement('h3');
     h.textContent = title;
     const row = document.createElement('div');
@@ -865,7 +875,7 @@
       const b = document.createElement('button');
       b.textContent = label;
       if (value === current) b.className = 'on';
-      b.addEventListener('click', () => { set(value); applyView(); showView(); });
+      b.addEventListener('click', () => { set(value); applyView(); redraw(); });
       row.appendChild(b);
     });
     rSheet.appendChild(h);
@@ -893,22 +903,32 @@
   document.getElementById('r-toc').addEventListener('click', () => {
     const open = !rSheet.hidden && rSheet.dataset.kind === 'toc';
     closeMenus();
-    if (!open) { rSheet.dataset.kind = 'toc'; showContents(); }
+    if (!open) { rSheet.dataset.kind = 'toc'; rSheet.classList.remove('bottom'); showContents(); }
   });
   document.getElementById('r-view').addEventListener('click', () => {
     const open = !rSheet.hidden && rSheet.dataset.kind === 'view';
     closeMenus();
-    if (!open) { rSheet.dataset.kind = 'view'; showView(); }
+    if (!open) { rSheet.dataset.kind = 'view'; rSheet.classList.remove('bottom'); showView(); }
   });
   document.getElementById('r-close').addEventListener('click', closeReader);
   rPlay.addEventListener('click', togglePlay);
   document.getElementById('r-back').addEventListener('click', () => seekBy(-30));
   document.getElementById('r-fwd').addEventListener('click', () => seekBy(15));
+  function showSpeed() {
+    rSheet.textContent = '';
+    segRow('Speed', SPEEDS.map(v => [v, v + 'x']), SPEEDS[speedIdx], v => {
+      speedIdx = SPEEDS.indexOf(v);
+      audio.playbackRate = v;
+      buildSpeedPills();
+    }, showSpeed);
+    rSheet.hidden = false;
+  }
   document.getElementById('r-speed').addEventListener('click', () => {
-    speedIdx = (speedIdx + 1) % SPEEDS.length;
-    audio.playbackRate = SPEEDS[speedIdx];
-    buildSpeedPills();
+    const open = !rSheet.hidden && rSheet.dataset.kind === 'speed';
+    closeMenus();
+    if (!open) { rSheet.dataset.kind = 'speed'; rSheet.classList.add('bottom'); showSpeed(); }
   });
+  audio.addEventListener('ratechange', () => { if (!readerEl.hidden) updateReaderTime(); });
   window.addEventListener('pagehide', saveReadPos);
   document.addEventListener('visibilitychange', () => { if (document.hidden) saveReadPos(); });
   applyView();
