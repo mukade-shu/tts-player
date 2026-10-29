@@ -186,8 +186,10 @@
     kbd { background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; padding: 2px 6px; font-size: 10px; font-family: inherit; }
 
     /* Reader (read-along text over the whole screen) */
-    .lib-read { background: none; border: 1px solid var(--border); color: var(--text-muted); border-radius: 6px; padding: 2px 6px; font-size: 12px; cursor: pointer; flex-shrink: 0; }
-    .lib-read:hover { border-color: var(--text-muted); }
+    .track-head { display: flex; align-items: center; gap: 8px; }
+    .track-head .card-title { flex: 1; min-width: 0; }
+    .track-pct { font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+    .text-btn { font-size: 15px; padding: 3px 9px; }
     body.reading { overflow: hidden; }
     #reader { position: fixed; inset: 0; z-index: 50; overflow: hidden; background: var(--bg); color: var(--text); display: flex; flex-direction: column; }
     #reader[hidden] { display: none; }
@@ -314,7 +316,11 @@
     </div>
 
     <div class="card">
-      <div class="card-title" id="track-title">Player</div>
+      <div class="track-head">
+        <div class="card-title" id="track-title">Player</div>
+        <span class="track-pct" id="track-pct"></span>
+        <button class="btn-ghost text-btn" id="text-btn" aria-label="Show text" hidden>📖</button>
+      </div>
       <div class="track-author" id="track-author" hidden></div>
       <a class="track-source" id="track-source" target="_blank" rel="noopener" hidden></a>
       <p class="no-audio-msg" id="no-audio-msg">Select a file from the library or open a local file</p>
@@ -348,7 +354,6 @@
             <input type="range" id="volume" min="0" max="1" step="0.05" value="1" aria-label="Volume">
           </div>
           <div class="bottom-row" style="gap:8px;">
-            <button class="btn btn-secondary" id="text-btn" hidden>📖 Text</button>
             <button class="btn btn-secondary" id="download-btn">⬇ Download</button>
           </div>
         </div>
@@ -784,7 +789,7 @@
   function updateReaderTime() {
     const d = audio.duration, t = audio.currentTime;
     document.getElementById('r-time').textContent = fmt(t);
-    document.getElementById('r-left').textContent = isFinite(d) ? '−' + fmt(Math.max(0, d - t) / audio.playbackRate) : '';
+    document.getElementById('r-left').textContent = isFinite(d) && d ? pct(t, d) + ' · −' + fmt(Math.max(0, d - t) / audio.playbackRate) : '';
     document.getElementById('r-progress').style.width = isFinite(d) && d ? (t / d * 100) + '%' : '0';
   }
 
@@ -867,6 +872,9 @@
     scrollToSentence(curIdx, true);
   });
   window.addEventListener('resize', placeAccent);
+  // text reflows after fonts load, on rotation, when a scrollbar appears … → keep the bar on its lines
+  if ('ResizeObserver' in window) new ResizeObserver(() => placeAccent()).observe(rText);
+  if (document.fonts) document.fonts.addEventListener('loadingdone', placeAccent);
 
   // ── Reader: tap a sentence → play from here / bookmark ──
   rText.addEventListener('click', e => {
@@ -1179,6 +1187,8 @@
     return h ? h + ':' + String(m).padStart(2, '0') + ':' + sec : m + ':' + sec;
   }
 
+  function pct(t, d) { return Math.floor(t / d * 100) + '%'; }
+
   function resolveAudioUrl(src) {
     if (src.startsWith('http') || src.startsWith('blob:')) return src;
     return AUDIO_BASE + '/' + encodeURIComponent(src);
@@ -1281,7 +1291,7 @@
     info.appendChild(dateEl);
     const pos = getPos(item.filename);
     if (pos && pos.d && !isDone) {
-      dateEl.textContent += ' · ' + fmt(pos.t) + ' / ' + fmt(pos.d);
+      dateEl.textContent += ' · ' + fmt(pos.t) + ' / ' + fmt(pos.d) + ' · ' + pct(pos.t, pos.d);
       const bar = document.createElement('div');
       bar.className = 'lib-progress';
       const fill = document.createElement('div');
@@ -1290,19 +1300,6 @@
       info.appendChild(bar);
     }
     li.appendChild(info);
-    if (item.text) {
-      // open the text without starting the audio (read-only, or start from any sentence)
-      const readBtn = document.createElement('button');
-      readBtn.className = 'lib-read';
-      readBtn.textContent = '📖';
-      readBtn.setAttribute('aria-label', 'Read text');
-      readBtn.addEventListener('click', e => {
-        e.stopPropagation();
-        if (currentKey !== item.filename) selectItem(item, li, icon, false);
-        openReader(item);
-      });
-      li.appendChild(readBtn);
-    }
     li.appendChild(archiveBtn);
     li.appendChild(icon);
 
@@ -1384,6 +1381,7 @@
     lastTime = audio.currentTime;
     if (audio.duration) seekEl.value = (audio.currentTime / audio.duration) * 100;
     curTimeEl.textContent = fmt(audio.currentTime);
+    document.getElementById('track-pct').textContent = audio.duration ? pct(audio.currentTime, audio.duration) : '';
     if (Date.now() - lastSaved > 5000) savePos();
     syncReader();
   });
