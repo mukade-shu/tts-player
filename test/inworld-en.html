@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inworld English Compare</title>
+<style>
+:root { --bg:#111; --fg:#f5f5f7; --muted:#8e8e93; --card:#1c1c1e; --line:#3a3a3c; }
+body { margin:0; padding:20px 16px 40px; background:var(--bg); color:var(--fg);
+       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; }
+main { max-width:560px; margin:0 auto; }
+h1 { font-size:20px; margin:0 0 4px; }
+p { color:var(--muted); font-size:13px; line-height:1.5; margin:0 0 16px; }
+.row { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px; margin-bottom:10px; }
+.label { font-size:14px; margin-bottom:8px; }
+audio { width:100%; }
+</style></head><body><main>
+<h1>Inworld English — TTS-2 vs Flash</h1>
+<p>Same paragraph. 48 kHz WAV → MP3 96 kbps mono, compressed once. Prices from your On-Demand plan; English ≈ 54k chars/hour.</p>
+<div class="row"><div class="label">New English voice — TTS-2 ($25/1M, ≈ $1.35/h)</div><audio controls preload="none" src="iw-en-newvoice-2.mp3"></audio></div>
+<div class="row"><div class="label">New English voice — TTS-2 Flash ($15/1M, ≈ $0.80/h)</div><audio controls preload="none" src="iw-en-newvoice-2-flash.mp3"></audio></div>
+<div class="row"><div class="label">Reference: calm voice — TTS-2</div><audio controls preload="none" src="iw-en-2.mp3"></audio></div>
+<div class="row"><div class="label">Reference: edge-tts Steffan (current English setting, free, 48 kbps as delivered)</div><audio controls preload="none" src="cmp-en-edge.mp3"></audio></div>
+</main></body></html>
