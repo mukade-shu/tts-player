@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="TTS Player">
   <title>TTS Player</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -12,25 +15,26 @@
       --surface: #1c1c1e;
       --surface2: #2c2c2e;
       --border: #3a3a3c;
-      --accent: #0a84ff;
-      --accent-hover: #409cff;
+      --accent: #8e8e93;
+      --accent-hover: #aeaeb2;
+      --on-accent: #111;
       --text: #f5f5f7;
       --text-muted: #8e8e93;
       --red: #ff453a;
-      --active: #1a2a3a;
-      --hl: rgba(10, 132, 255, 0.18);
+      --active: #2a2a2c;
+      --hl: rgba(142, 142, 147, 0.2);
       --sidebar: 280px;
     }
     /* Reader themes (Aa → Theme) recolour the whole app */
     :root[data-theme="light"] {
       --bg: #fff; --surface: #f5f5f7; --surface2: #e9e9ee; --border: #d1d1d6;
-      --accent: #007aff; --accent-hover: #3395ff; --text: #1c1c1e; --text-muted: #6e6e73;
-      --active: #e3eefc; --hl: rgba(0, 122, 255, 0.12);
+      --accent: #6e6e73; --accent-hover: #8e8e93; --on-accent: #fff; --text: #1c1c1e; --text-muted: #6e6e73;
+      --active: #e9e9ee; --hl: rgba(110, 110, 115, 0.14);
     }
     :root[data-theme="sepia"] {
       --bg: #f4ecd8; --surface: #ece2c9; --surface2: #e2d6b8; --border: #d3c4a0;
-      --accent: #a0522d; --accent-hover: #b8653d; --text: #3b2f1e; --text-muted: #7a6a50;
-      --active: #e6d3ad; --hl: rgba(160, 82, 45, 0.15);
+      --accent: #7a6a50; --accent-hover: #8f7d60; --on-accent: #fff; --text: #3b2f1e; --text-muted: #7a6a50;
+      --active: #e2d6b8; --hl: rgba(122, 106, 80, 0.18);
     }
 
     body {
@@ -142,7 +146,7 @@
 
     /* Buttons */
     .btn { border: none; border-radius: 8px; padding: 10px 18px; font-size: 14px; font-weight: 500; cursor: pointer; font-family: inherit; transition: all 0.15s; white-space: nowrap; display: flex; align-items: center; justify-content: center; gap: 8px; }
-    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary { background: var(--accent); color: var(--on-accent); }
     .btn-primary:hover { background: var(--accent-hover); }
     .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
     .btn-secondary:hover { border-color: var(--text-muted); }
@@ -169,7 +173,7 @@
     .speed-pills { display: flex; gap: 6px; flex-wrap: wrap; }
     .speed-pill { background: var(--surface2); border: 1px solid var(--border); color: var(--text-muted); border-radius: 6px; padding: 4px 10px; font-size: 12px; cursor: pointer; transition: all 0.15s; }
     .speed-pill:hover { color: var(--text); border-color: var(--text-muted); }
-    .speed-pill.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .speed-pill.active { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
     .speed-value { min-width: 48px; text-align: center; font-size: 13px; font-variant-numeric: tabular-nums; align-self: center; }
     .volume-row { display: flex; align-items: center; gap: 8px; }
     .volume-icon { font-size: 16px; color: var(--text-muted); }
@@ -209,11 +213,11 @@
     .reader-text .s.sel { outline: 2px solid var(--accent); outline-offset: 1px; }
     .reader-text .s.bm { text-decoration: underline dotted var(--accent); text-decoration-thickness: 2px; text-underline-offset: 4px; }
     .reader-text .s.flash { background: var(--hl); }
-    .r-accent { position: absolute; left: 10px; width: 4px; border-radius: 2px; background: var(--accent); transition: top 0.25s, height 0.25s; pointer-events: none; }
+    .r-accent { position: absolute; left: 10px; width: 4px; border-radius: 2px; background: var(--accent); transition: top 0.25s, height 0.25s, opacity 0.2s; pointer-events: none; }
     .r-accent[hidden] { display: none; }
     .r-msg { color: var(--text-muted); text-align: center; padding-top: 30vh; font-family: -apple-system, sans-serif; font-size: 14px; }
     .r-next { display: block; margin: 2.5em auto 0; font-size: 15px; }
-    .r-follow { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(84px + env(safe-area-inset-bottom)); background: var(--accent); color: #fff; border: none; border-radius: 18px; padding: 8px 16px; font-size: 13px; font-family: inherit; cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,0.3); }
+    .r-follow { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(84px + env(safe-area-inset-bottom)); background: var(--accent); color: var(--on-accent); border: none; border-radius: 18px; padding: 8px 16px; font-size: 13px; font-family: inherit; cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,0.3); }
     .r-follow[hidden] { display: none; }
     .reader-player { border-top: 1px solid var(--border); background: var(--surface); flex-shrink: 0; padding-bottom: env(safe-area-inset-bottom); }
     .r-progress { height: 3px; background: var(--border); }
@@ -222,13 +226,19 @@
     .r-times { display: flex; justify-content: space-between; max-width: 520px; margin: 0 auto; padding: 6px 14px 0; }
     #r-peek[hidden], #r-mark-read[hidden] { display: none; }
     #r-peek { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+    #reader.bars-hidden .reader-bar, #reader.bars-hidden .reader-player { display: none; }
+    #reader.bars-hidden .r-follow { bottom: calc(20px + env(safe-area-inset-bottom)); }
+    .r-float { display: none; position: absolute; bottom: calc(14px + env(safe-area-inset-bottom)); width: 48px; height: 48px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface2); color: var(--text); font-size: 18px; cursor: pointer; align-items: center; justify-content: center; opacity: 0.9; }
+    #r-float-play { left: 16px; }
+    #r-float-menu { right: 16px; }
+    #reader.bars-hidden .r-float { display: flex; }
     #reader.hold-bar .r-accent { opacity: 0; }
-    #reader.hold-bar.peek .r-accent { opacity: 1; }
+    #reader.hold-bar.peek .r-accent, #reader.hold-bar.flash-bar .r-accent { opacity: 1; }
     #reader.hold-bar .reader-text { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
     .search-input { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 9px 10px; font-size: 16px; font-family: inherit; outline: none; }
     .mute-btn { background: none; border: none; font-size: 16px; cursor: pointer; padding: 0; }
     .r-controls .r-btn { border-color: var(--border); background: var(--surface2); font-size: 12px; }
-    .r-controls .r-play { background: var(--accent); border-color: var(--accent); color: #fff; border-radius: 50%; width: 46px; height: 46px; font-size: 18px; }
+    .r-controls .r-play { background: var(--accent); border-color: var(--accent); color: var(--on-accent); border-radius: 50%; width: 46px; height: 46px; font-size: 18px; }
     .sentence-menu { position: fixed; z-index: 60; display: flex; gap: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 4px; box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
     .sentence-menu[hidden] { display: none; }
     .sentence-menu button { background: none; border: none; color: var(--text); font-size: 13px; font-family: inherit; padding: 8px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
@@ -247,7 +257,7 @@
     .sheet-empty { font-size: 12px; color: var(--text-muted); }
     .seg { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
     .seg button { flex: 1; background: var(--surface2); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 8px 6px; font-size: 13px; font-family: inherit; cursor: pointer; }
-    .seg button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .seg button.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
     .seg .val { flex: 1; text-align: center; font-size: 13px; color: var(--text-muted); }
     .toast { position: fixed; z-index: 70; left: 50%; top: 64px; transform: translateX(-50%); background: var(--text); color: var(--bg); border-radius: 16px; padding: 6px 14px; font-size: 13px; pointer-events: none; display: flex; align-items: center; gap: 10px; white-space: nowrap; }
     .toast button { pointer-events: auto; background: none; border: 1px solid var(--bg); color: var(--bg); border-radius: 12px; padding: 3px 10px; font-size: 12px; font-family: inherit; cursor: pointer; }
@@ -396,6 +406,8 @@
   </div>
   <div class="sheet" id="r-sheet" hidden></div>
   <button class="r-follow" id="r-follow" hidden>↓ Back to audio</button>
+  <button class="r-float" id="r-float-play" aria-label="Pause">⏸</button>
+  <button class="r-float" id="r-float-menu" aria-label="Show menus">☰</button>
   <div class="reader-player">
     <div class="r-progress"><div id="r-progress"></div></div>
     <div class="r-times">
@@ -565,20 +577,22 @@
   (() => {
     const m = location.hash.match(/[#&]sync=([\w-]+)/);
     if (!m) return;
-    try { localStorage.setItem(SYNC_KEY_STORE, m[1]); } catch (_) {}
     history.replaceState(null, '', location.pathname + location.search);  // keep the key out of the address bar
-    // first join: offer this device's existing data with a very old timestamp (never beats the server)
-    const meta = loadJSON(SYNC_META, null), dirty = {};
-    if (!meta) {
-      const seed = {};
-      for (let i = 0; i < localStorage.length; i++) {
-        const k = localStorage.key(i);
-        if (SYNCED_KEY.test(k)) { seed[k] = 2; dirty[k] = true; }
-      }
-      saveRaw(SYNC_META, seed);
-      saveRaw(SYNC_DIRTY, dirty);
-    }
+    joinSync(m[1]);
   })();
+
+  function joinSync(key) {
+    try { localStorage.setItem(SYNC_KEY_STORE, key); } catch (_) {}
+    // first join: offer this device's existing data with a very old timestamp (never beats the server)
+    if (loadJSON(SYNC_META, null)) return;
+    const seed = {}, dirty = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (SYNCED_KEY.test(k)) { seed[k] = 2; dirty[k] = true; }
+    }
+    saveRaw(SYNC_META, seed);
+    saveRaw(SYNC_DIRTY, dirty);
+  }
 
   function syncKey() { try { return localStorage.getItem(SYNC_KEY_STORE); } catch (_) { return null; } }
   function saveRaw(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch (_) {} }
@@ -737,11 +751,13 @@
     document.body.classList.add('reading');
     document.getElementById('r-title').textContent = item.title || item.filename;
     closeMenus();
+    wakeBars();
     updateReaderTime();
     if (doc && doc.item.filename === item.filename) {
       syncReader();
       placeAccent();
       if (follow && !audio.paused && !inView(curIdx)) scrollToSentence(curIdx, false);
+      flashBar();
       return;
     }
     doc = null;
@@ -756,10 +772,12 @@
     follow = true;
     syncReader();
     scrollToSentence(start, false);
+    flashBar();
   }
 
   function closeReader() {
     readerEl.hidden = true;
+    wakeBars();
     document.body.classList.remove('reading');
     closeMenus();
   }
@@ -833,7 +851,7 @@
     curIdx = i;
     doc.spans[i].classList.add('cur');
     placeAccent();
-    if (follow && !audio.paused && !inView(i)) scrollToSentence(i, true);
+    if (follow && !audio.paused && !inView(i)) { scrollToSentence(i, true); flashBar(); }
   }
 
   // the bar beside the lines of the spoken sentence, however many lines it wraps to on this screen
@@ -889,6 +907,7 @@
     follow = true;
     rFollow.hidden = true;
     scrollToSentence(curIdx, true);
+    flashBar();
   });
   window.addEventListener('resize', placeAccent);
   // text reflows after fonts load, on rotation, when a scrollbar appears … → keep the bar on its lines
@@ -898,6 +917,7 @@
   // ── Reader: tap a sentence → play from here / bookmark ──
   rText.addEventListener('click', e => {
     if (peekHeld) { peekHeld = false; return; }  // the end of a hold is not a tap
+    if (readerEl.classList.contains('bars-hidden')) { wakeBars(); return; }  // this tap only brings the menus back
     const span = e.target.closest('.s');
     if (!span) { closeMenus(); return; }
     if (rSheet.hidden === false) { closeMenus(); return; }
@@ -1118,6 +1138,40 @@
   // ── Reader: hide the bar, show it only while held ──
   // Aa → Highlight → Hold to show: thumb held still on the text, or the 👁 button
   let peekTimer = null, peekFrom = null, peekHeld = false;
+  // ── Reader: on a phone the menus leave while audio plays untouched; a tap brings them back ──
+  const BAR_HIDE_MS = 4000;
+  let barTimer = null;
+  function setBarsHidden(hidden) {
+    if (hidden === readerEl.classList.contains('bars-hidden')) return;
+    const before = hidden ? document.querySelector('.reader-bar').offsetHeight : 0;
+    readerEl.classList.toggle('bars-hidden', hidden);
+    const height = before || document.querySelector('.reader-bar').offsetHeight;
+    rScroll.scrollTop += hidden ? -height : height;  // the text area grows upwards: keep the words where they are
+    placeAccent();
+  }
+  function wakeBars() {
+    setBarsHidden(false);
+    clearTimeout(barTimer);
+    if (readerEl.hidden || audio.paused || window.innerWidth > 600) return;
+    barTimer = setTimeout(() => {
+      if (rMenu.hidden && rSheet.hidden && memoDlg.hidden) setBarsHidden(true);
+      else wakeBars();
+    }, BAR_HIDE_MS);
+  }
+  readerEl.addEventListener('pointerdown', () => { if (!readerEl.classList.contains('bars-hidden')) wakeBars(); });
+  document.getElementById('r-float-play').addEventListener('click', togglePlay);  // pausing brings the menus back
+  document.getElementById('r-float-menu').addEventListener('click', wakeBars);
+  audio.addEventListener('play', wakeBars);
+  audio.addEventListener('pause', wakeBars);
+  window.addEventListener('resize', wakeBars);
+
+  // the page just moved: show where the voice is for a moment, also in hold mode
+  let flashTimer = null;
+  function flashBar() {
+    readerEl.classList.add('flash-bar');
+    clearTimeout(flashTimer);
+    flashTimer = setTimeout(() => readerEl.classList.remove('flash-bar'), 1500);
+  }
   function setPeek(on) { readerEl.classList.toggle('peek', on); if (on) placeAccent(); }
   function endHold() {
     clearTimeout(peekTimer);
@@ -1253,6 +1307,36 @@
     sp.className = 'sheet-empty';
     sp.textContent = syncStatus();
     rSheet.append(sh, sp);
+    // a home-screen web app has its own storage on iOS, so the setup link opened in Safari does not reach it
+    const row2 = document.createElement('div');
+    row2.className = 'seg';
+    if (syncKey()) {
+      const copy = document.createElement('button');
+      copy.textContent = 'Copy setup link';
+      copy.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(location.origin + location.pathname + '#sync=' + syncKey());
+          toast('Copied — paste it in Aa on the other device');
+        } catch (_) { toast('Could not copy'); }
+      });
+      row2.appendChild(copy);
+    } else {
+      const input = document.createElement('input'), join = document.createElement('button');
+      input.className = 'search-input';
+      input.id = 'sync-input';
+      input.placeholder = 'Paste setup link';
+      join.textContent = 'Turn on';
+      join.addEventListener('click', async () => {
+        const text = input.value.trim(), m = text.match(/sync=([\w-]+)/);
+        const key = m ? m[1] : text;
+        if (!/^[\w-]{6,}$/.test(key)) { toast('That is not a setup link'); return; }
+        joinSync(key);
+        await pullSync();
+        showView();
+      });
+      row2.append(input, join);
+    }
+    rSheet.appendChild(row2);
     rSheet.hidden = false;
   }
 
