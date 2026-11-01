@@ -219,7 +219,14 @@
     .r-progress { height: 3px; background: var(--border); }
     .r-progress > div { height: 100%; width: 0; background: var(--accent); }
     .r-controls { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 12px; max-width: 520px; margin: 0 auto; }
-    .r-controls .time { min-width: 52px; }
+    .r-times { display: flex; justify-content: space-between; max-width: 520px; margin: 0 auto; padding: 6px 14px 0; }
+    #r-peek[hidden], #r-mark-read[hidden] { display: none; }
+    #r-peek { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+    #reader.hold-bar .r-accent { opacity: 0; }
+    #reader.hold-bar.peek .r-accent { opacity: 1; }
+    #reader.hold-bar .reader-text { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+    .search-input { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 9px 10px; font-size: 16px; font-family: inherit; outline: none; }
+    .mute-btn { background: none; border: none; font-size: 16px; cursor: pointer; padding: 0; }
     .r-controls .r-btn { border-color: var(--border); background: var(--surface2); font-size: 12px; }
     .r-controls .r-play { background: var(--accent); border-color: var(--accent); color: #fff; border-radius: 50%; width: 46px; height: 46px; font-size: 18px; }
     .sentence-menu { position: fixed; z-index: 60; display: flex; gap: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 4px; box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
@@ -262,7 +269,8 @@
     @media (max-width: 600px) {
       .reader-text { padding: 20px 20px 40vh; }
       .r-accent { left: 6px; width: 3px; }
-      .r-controls .time { min-width: 0; font-size: 11px; }
+      .r-controls { gap: 4px; padding: 6px 8px 10px; }
+      .r-controls .r-btn { padding: 0 6px; }
       body { overflow: auto; }
       #app.visible { flex-direction: column; height: auto; }
       .sidebar { width: 100%; height: auto; border-right: none; border-bottom: 1px solid var(--border); }
@@ -350,7 +358,7 @@
             <div class="speed-pills" id="sleep-pills"></div>
           </div>
           <div class="volume-row">
-            <span class="volume-icon">🔊</span>
+            <button class="mute-btn" id="mute-btn" aria-label="Mute">🔊</button>
             <input type="range" id="volume" min="0" max="1" step="0.05" value="1" aria-label="Volume">
           </div>
           <div class="bottom-row" style="gap:8px;">
@@ -378,6 +386,7 @@
   <div class="reader-bar">
     <button class="r-btn" id="r-close" aria-label="Hide text">✕</button>
     <div class="r-title" id="r-title"></div>
+    <button class="r-btn" id="r-search" aria-label="Search the text">🔍</button>
     <button class="r-btn" id="r-toc" aria-label="Contents and bookmarks">☰</button>
     <button class="r-btn" id="r-mark" aria-label="Bookmark">🔖</button>
     <button class="r-btn" id="r-view" aria-label="Display settings">Aa</button>
@@ -389,20 +398,25 @@
   <button class="r-follow" id="r-follow" hidden>↓ Back to audio</button>
   <div class="reader-player">
     <div class="r-progress"><div id="r-progress"></div></div>
-    <div class="r-controls">
+    <div class="r-times">
       <span class="time" id="r-time">0:00</span>
+      <span class="time end" id="r-left">0:00</span>
+    </div>
+    <div class="r-controls">
       <button class="r-btn" id="r-back">⏪ 30s</button>
       <button class="r-btn r-play" id="r-play">▶</button>
       <button class="r-btn" id="r-fwd">15s ⏩</button>
       <button class="r-btn" id="r-speed">1x</button>
       <button class="r-btn" id="r-sleep" aria-label="Sleep timer">🌙</button>
-      <span class="time end" id="r-left">0:00</span>
+      <button class="r-btn" id="r-mute" aria-label="Mute">🔊</button>
+      <button class="r-btn" id="r-peek" aria-label="Hold to show the highlight" hidden>👁</button>
     </div>
   </div>
 </div>
 <div class="sentence-menu" id="r-menu" hidden>
   <div class="menu-memo" id="r-menu-memo" hidden></div>
   <button id="r-play-here">▶ Play from here</button>
+  <button id="r-mark-read">📍 Read to here</button>
   <button id="r-mark-here">🔖 Bookmark</button>
   <button id="r-memo-here" hidden>✎ Memo</button>
 </div>
@@ -418,7 +432,7 @@
   </div>
 </div>
 
-<audio id="audio"></audio>
+<audio id="audio" preload="metadata"></audio>
 
 <script>
   'use strict';
@@ -511,8 +525,25 @@
   function getPos(name) {
     try { return JSON.parse(localStorage.getItem(POS_PREFIX + name)) || null; } catch (_) { return null; }
   }
+  // one position per file: heard or marked "read to here". Before the audio has loaded it comes from storage
+  function audioTime() {
+    if (pendingSeek !== null) return pendingSeek;
+    if (audio.readyState >= 1) return audio.currentTime;
+    const pos = currentKey ? getPos(currentKey) : null;
+    return pos ? pos.t : 0;
+  }
+  function audioDuration() {
+    if (isFinite(audio.duration)) return audio.duration;
+    const pos = currentKey ? getPos(currentKey) : null;
+    return pos ? pos.d : NaN;
+  }
+  function seekAudio(t) {
+    if (audio.readyState >= 1) audio.currentTime = t; else pendingSeek = t;
+  }
   function savePos() {
     if (!currentKey || !audio.duration) return;
+    const prev = getPos(currentKey);
+    if (prev && Math.abs(prev.t - audio.currentTime) < 1) return;  // unchanged: never overwrite a newer position from another device
     try { localStorage.setItem(POS_PREFIX + currentKey, JSON.stringify({ t: audio.currentTime, d: audio.duration })); } catch (_) {}
     lastSaved = Date.now();
     syncChanged(POS_PREFIX + currentKey, audio.paused);
@@ -622,6 +653,7 @@
       const pos = getPos(currentKey);
       if (pos) audio.currentTime = pos.t;
     }
+    if (posChanged) { showPosition(); syncReader(); }
     if (libraryItems.length) renderLibrary();
     if (doc && !readerEl.hidden) markBookmarks();
   }
@@ -638,9 +670,9 @@
 
   // ── Reader (read-along text) ──────────────────────────────
   // tts-edge.py saves audio/<name>.json = { lang, paras: [{ h?, s: [[startSecond, sentence], …] }] };
-  // library.json points to it with "text". Per device: tts_read:<file> (reading position),
-  // tts_bm:<file> (bookmarked sentence indexes), tts_view (theme / size / spacing / font).
-  const READ_PREFIX = 'tts_read:', BM_PREFIX = 'tts_bm:', VIEW_KEY = 'tts_view';
+  // library.json points to it with "text". tts_bm:<file> = bookmarks + memos (synced);
+  // tts_view = theme / size / spacing / font / highlight (per device).
+  const BM_PREFIX = 'tts_bm:', VIEW_KEY = 'tts_view';
   const readerEl = document.getElementById('reader');
   const rScroll  = document.getElementById('r-scroll');
   const rText    = document.getElementById('r-text');
@@ -662,7 +694,7 @@
   }
   function saveJSON(key, value) {
     try { localStorage.setItem(key, JSON.stringify(value)); } catch (_) {}
-    syncChanged(key, !key.startsWith(READ_PREFIX));
+    syncChanged(key, true);
   }
 
   function setCurrentItem(item) {
@@ -719,8 +751,7 @@
     if (readerEl.hidden || currentKey !== item.filename) return;  // closed or switched while loading
     renderText(item, data);
     // playing → follow the voice; otherwise back to where reading stopped (or the audio position)
-    const saved = loadJSON(READ_PREFIX + item.filename, null);
-    const start = !audio.paused || !saved ? indexAt(audio.currentTime) : Math.min(saved.i, doc.spans.length - 1);
+    const start = indexAt(audioTime());
     curIdx = -1;
     follow = true;
     syncReader();
@@ -728,7 +759,6 @@
   }
 
   function closeReader() {
-    saveReadPos();
     readerEl.hidden = true;
     document.body.classList.remove('reading');
     closeMenus();
@@ -787,7 +817,7 @@
   }
 
   function updateReaderTime() {
-    const d = audio.duration, t = audio.currentTime;
+    const d = audioDuration(), t = audioTime();
     document.getElementById('r-time').textContent = fmt(t);
     document.getElementById('r-left').textContent = isFinite(d) && d ? pct(t, d) + ' · −' + fmt(Math.max(0, d - t) / audio.playbackRate) : '';
     document.getElementById('r-progress').style.width = isFinite(d) && d ? (t / d * 100) + '%' : '0';
@@ -797,14 +827,13 @@
     if (readerEl.hidden) return;
     updateReaderTime();
     if (!doc || doc.item.filename !== currentKey) return;
-    const i = indexAt(audio.currentTime);
+    const i = indexAt(audioTime());
     if (i === curIdx) return;
     if (curIdx >= 0 && doc.spans[curIdx]) doc.spans[curIdx].classList.remove('cur');
     curIdx = i;
     doc.spans[i].classList.add('cur');
     placeAccent();
     if (follow && !audio.paused && !inView(i)) scrollToSentence(i, true);
-    if (!audio.paused) saveJSON(READ_PREFIX + doc.item.filename, { i });
   }
 
   // the bar beside the lines of the spoken sentence, however many lines it wraps to on this screen
@@ -848,10 +877,6 @@
     return lo;
   }
 
-  function saveReadPos() {
-    if (doc && !readerEl.hidden) saveJSON(READ_PREFIX + doc.item.filename, { i: follow && !audio.paused ? curIdx : topSentence() });
-  }
-
   // scrolling by hand stops following the voice until "Back to audio"
   function stopFollowing() {
     follow = false;
@@ -860,12 +885,6 @@
   }
   rScroll.addEventListener('wheel', stopFollowing, { passive: true });
   rScroll.addEventListener('touchmove', stopFollowing, { passive: true });
-  let readSaveTimer = null;
-  rScroll.addEventListener('scroll', () => {
-    if (follow) return;
-    clearTimeout(readSaveTimer);
-    readSaveTimer = setTimeout(saveReadPos, 600);
-  }, { passive: true });
   rFollow.addEventListener('click', () => {
     follow = true;
     rFollow.hidden = true;
@@ -878,12 +897,14 @@
 
   // ── Reader: tap a sentence → play from here / bookmark ──
   rText.addEventListener('click', e => {
+    if (peekHeld) { peekHeld = false; return; }  // the end of a hold is not a tap
     const span = e.target.closest('.s');
     if (!span) { closeMenus(); return; }
     if (rSheet.hidden === false) { closeMenus(); return; }
     if (doc.spans[selIdx]) doc.spans[selIdx].classList.remove('sel');
     selIdx = +span.dataset.i;
     span.classList.add('sel');
+    document.getElementById('r-mark-read').hidden = !audio.paused;
     const bm = bookmarkAt(selIdx);
     document.getElementById('r-mark-here').textContent = bm ? '🔖 Remove bookmark' : '🔖 Bookmark';
     const memoBtn = document.getElementById('r-memo-here'), memoEl = document.getElementById('r-menu-memo');
@@ -900,10 +921,25 @@
   document.getElementById('r-play-here').addEventListener('click', () => {
     const t = doc.times[selIdx];
     closeMenus();
-    if (audio.readyState >= 1) audio.currentTime = t; else pendingSeek = t;
+    seekAudio(t);
     follow = true;
     rFollow.hidden = true;
     if (audio.paused) togglePlay();
+  });
+  // text-only reading: scrolling records nothing; this sets the file's one position (audio resumes here too)
+  document.getElementById('r-mark-read').addEventListener('click', () => {
+    const t = doc.times[selIdx];
+    closeMenus();
+    seekAudio(t);
+    const d = audioDuration();
+    if (currentKey && isFinite(d)) {
+      try { localStorage.setItem(POS_PREFIX + currentKey, JSON.stringify({ t, d })); } catch (_) {}
+      syncChanged(POS_PREFIX + currentKey, true);
+    }
+    follow = true;
+    syncReader();
+    showPosition();
+    toast('Marked: read to here');
   });
   document.getElementById('r-mark-here').addEventListener('click', () => {
     toggleBookmark(selIdx);
@@ -1079,6 +1115,87 @@
     rSheet.hidden = false;
   }
 
+  // ── Reader: hide the bar, show it only while held ──
+  // Aa → Highlight → Hold to show: thumb held still on the text, or the 👁 button
+  let peekTimer = null, peekFrom = null, peekHeld = false;
+  function setPeek(on) { readerEl.classList.toggle('peek', on); if (on) placeAccent(); }
+  function endHold() {
+    clearTimeout(peekTimer);
+    peekFrom = null;
+    setPeek(false);
+  }
+  rScroll.addEventListener('pointerdown', e => {
+    if (view.bar !== 'hold') return;
+    peekHeld = false;
+    peekFrom = { x: e.clientX, y: e.clientY };
+    peekTimer = setTimeout(() => { peekHeld = true; setPeek(true); }, 250);
+  });
+  rScroll.addEventListener('pointermove', e => {
+    if (peekFrom && !peekHeld && Math.hypot(e.clientX - peekFrom.x, e.clientY - peekFrom.y) > 10) endHold();
+  });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(n => rScroll.addEventListener(n, endHold));
+  rScroll.addEventListener('contextmenu', e => { if (view.bar === 'hold') e.preventDefault(); });
+  const peekBtn = document.getElementById('r-peek');
+  peekBtn.addEventListener('pointerdown', () => setPeek(true));
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(n => peekBtn.addEventListener(n, () => setPeek(false)));
+  peekBtn.addEventListener('contextmenu', e => e.preventDefault());
+
+  // ── Mute: keeps playing silently (read along on the iPad while the iPhone plays) ──
+  function toggleMute() {
+    audio.muted = !audio.muted;
+    const label = audio.muted ? '🔇' : '🔊';
+    document.getElementById('r-mute').textContent = label;
+    document.getElementById('mute-btn').textContent = label;
+  }
+  document.getElementById('r-mute').addEventListener('click', toggleMute);
+  document.getElementById('mute-btn').addEventListener('click', toggleMute);
+
+  // ── Reader: search this text ──
+  let searchQuery = '', searchTimer = null;
+  function showSearch() {
+    if (!doc) return;
+    rSheet.textContent = '';
+    const input = document.createElement('input');
+    input.className = 'search-input';
+    input.type = 'search';
+    input.placeholder = 'Search this text';
+    input.value = searchQuery;
+    const results = document.createElement('div');
+    rSheet.append(input, results);
+    rSheet.hidden = false;
+    const run = () => {
+      searchQuery = input.value.trim();
+      results.textContent = '';
+      if (searchQuery.length < 2) return;
+      const q = searchQuery.toLowerCase(), hits = [];
+      doc.spans.forEach((s, i) => { if (s.textContent.toLowerCase().includes(q)) hits.push(i); });
+      const ul = document.createElement('ul');
+      ul.className = 'sheet-list';
+      hits.slice(0, 50).forEach(i => {
+        const li = document.createElement('li');
+        const span = document.createElement('span');
+        const text = doc.spans[i].textContent, at = text.toLowerCase().indexOf(q);
+        span.className = 'memo-text';
+        span.textContent = (at > 30 ? '…' : '') + text.slice(Math.max(0, at - 30), at + 90);
+        li.appendChild(span);
+        li.addEventListener('click', () => jumpTo(i));
+        ul.appendChild(li);
+      });
+      const count = document.createElement('p');
+      count.className = 'sheet-empty';
+      count.textContent = hits.length > 50 ? hits.length + ' results (first 50 shown)' : hits.length + ' results';
+      results.append(count, ul);
+    };
+    input.addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(run, 200); });
+    run();
+    input.focus();
+  }
+  document.getElementById('r-search').addEventListener('click', () => {
+    const open = !rSheet.hidden && rSheet.dataset.kind === 'search';
+    closeMenus();
+    if (!open) { rSheet.dataset.kind = 'search'; rSheet.classList.remove('bottom'); showSearch(); }
+  });
+
   // ── Reader: display settings ──
   const FONTS = {
     sans:  "-apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Segoe UI', sans-serif",
@@ -1088,6 +1205,8 @@
   function applyView() {
     if (view.theme === 'dark') delete document.documentElement.dataset.theme;
     else document.documentElement.dataset.theme = view.theme;
+    readerEl.classList.toggle('hold-bar', view.bar === 'hold');
+    document.getElementById('r-peek').hidden = view.bar !== 'hold';
     rText.style.setProperty('--r-size', view.size + 'px');
     rText.style.setProperty('--r-lh', view.lh);
     rText.style.setProperty('--r-font', FONTS[view.font] || FONTS.serif);
@@ -1125,6 +1244,7 @@
     plus.addEventListener('click',  () => { view.size = Math.min(32, view.size + 1); applyView(); showView(); });
     row.append(minus, val, plus);
     rSheet.append(h, row);
+    segRow('Highlight', [['show', 'Always'], ['hold', 'Hold to show']], view.bar || 'show', v => { view.bar = v; });
     segRow('Line spacing', [[1.5, 'Tight'], [1.75, 'Normal'], [2.05, 'Loose']], view.lh, v => { view.lh = v; });
     segRow('Font', [['serif', 'Serif'], ['sans', 'Sans']], view.font, v => { view.font = v; });
     const sh = document.createElement('h3');
@@ -1166,8 +1286,6 @@
     if (!open) { rSheet.dataset.kind = 'speed'; rSheet.classList.add('bottom'); showSpeed(); }
   });
   audio.addEventListener('ratechange', () => { if (!readerEl.hidden) updateReaderTime(); });
-  window.addEventListener('pagehide', saveReadPos);
-  document.addEventListener('visibilitychange', () => { if (document.hidden) saveReadPos(); });
   applyView();
 
   // ── Init ──────────────────────────────────────────────────
@@ -1305,7 +1423,8 @@
 
     li.addEventListener('click', () => {
       if (isDone) setFlag(DONE_KEY, item.filename, false);
-      selectItem(item, li, icon, true);
+      if (window.innerWidth <= 600) window.scrollTo({ top: 0, behavior: 'smooth' });  // the player is above the list
+      if (currentKey !== item.filename) selectItem(item, li, icon, false);  // press ▶ or 📖: audio is not always wanted
     });
 
     if (currentKey === item.filename) {
@@ -1366,12 +1485,22 @@
     document.getElementById('player-controls').classList.remove('player-hidden');
     audio.playbackRate = speed;
     playHint.hidden = true;
-    if (!autoplay) { playBtn.textContent = '▶'; return; }
+    if (!autoplay) { playBtn.textContent = '▶'; showPosition(); return; }
     audio.play().then(() => { playBtn.textContent = '⏸'; }).catch(() => {
       playBtn.textContent = '▶';
       playHint.textContent = 'Tap ▶ to play';
       playHint.hidden = false;
     });
+  }
+
+  // saved position in the player card, also before the audio has loaded (iOS loads on play)
+  function showPosition() {
+    const t = audioTime(), d = audioDuration();
+    curTimeEl.textContent = fmt(t);
+    durEl.textContent = fmt(d);
+    seekEl.value = isFinite(d) && d ? t / d * 100 : 0;
+    document.getElementById('track-pct').textContent = isFinite(d) && d ? pct(t, d) : '';
+    if (!readerEl.hidden) updateReaderTime();
   }
 
   // ── Audio events ──────────────────────────────────────────
@@ -1435,7 +1564,8 @@
   }
 
   function seekBy(d) {
-    audio.currentTime = Math.max(0, Math.min(audio.duration || 0, audio.currentTime + d));
+    seekAudio(Math.max(0, Math.min(audioDuration() || 0, audioTime() + d)));
+    if (audio.readyState < 1) { showPosition(); syncReader(); }
   }
 
   playBtn.addEventListener('click', togglePlay);
@@ -1591,6 +1721,7 @@
       case 'ArrowUp':    e.preventDefault(); setSpeed(speed + SPEED_STEP); break;
       case 'ArrowDown':  e.preventDefault(); setSpeed(speed - SPEED_STEP); break;
       case 'd': case 'D': document.getElementById('download-btn').click(); break;
+      case 'm': case 'M': toggleMute(); break;
     }
   });
 
