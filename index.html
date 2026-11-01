@@ -209,6 +209,9 @@
     .reader-text h2 { font-size: 1.4em; }
     .reader-text h3 { font-size: 1.2em; }
     .reader-text h4 { font-size: 1.05em; }
+    .r-fig { margin: 1.4em 0; }
+    .r-fig img { display: block; max-width: 100%; height: auto; border-radius: 4px; }
+    .r-fig figcaption { margin-top: 0.5em; font-size: 0.72em; line-height: 1.4; color: var(--text-muted); }
     .reader-text .s { cursor: pointer; border-radius: 3px; -webkit-box-decoration-break: clone; box-decoration-break: clone; transition: background 0.2s; }
     .reader-text .s.sel { outline: 2px solid var(--accent); outline-offset: 1px; }
     .reader-text .s.bm { text-decoration: underline dotted var(--accent); text-decoration-thickness: 2px; text-underline-offset: 4px; }
@@ -788,6 +791,7 @@
     const times = [], spans = [], heads = [];
     const gap = data.lang === 'ja' ? '' : ' ';
     data.paras.forEach(p => {
+      if (p.img) { rText.appendChild(articleImage(p)); return; }
       const el = document.createElement(p.h ? 'h' + Math.min(p.h + 1, 4) : 'p');
       if (p.h) heads.push({ level: p.h, text: p.s.map(s => s[1]).join(gap), i: spans.length });
       p.s.forEach(([t, s], k) => {
@@ -795,7 +799,7 @@
         const span = document.createElement('span');
         span.className = 's';
         span.dataset.i = spans.length;
-        span.textContent = s;
+        setSentenceText(span, s);
         times.push(t);
         spans.push(span);
         el.appendChild(span);
@@ -814,6 +818,40 @@
     rText.appendChild(rAccent);
     doc = { item, lang: data.lang, times, spans, heads };
     markBookmarks();
+  }
+
+  // Article images stay on the source site. They carry no sentences, so sentence numbers are unaffected
+  function articleImage(p) {
+    const fig = document.createElement('figure'), img = document.createElement('img');
+    fig.className = 'r-fig';
+    img.src = p.img;
+    img.alt = '';
+    img.loading = 'lazy';
+    img.decoding = 'async';
+    img.referrerPolicy = 'no-referrer';
+    img.addEventListener('error', () => img.remove());
+    fig.appendChild(img);
+    if (p.cap) {
+      const cap = document.createElement('figcaption');
+      setSentenceText(cap, p.cap);
+      fig.appendChild(cap);
+    }
+    return fig;
+  }
+
+  // Markdown italics survive in clipped text as _Title_: show them as real italics
+  function setSentenceText(span, text) {
+    let last = 0;
+    for (const m of text.matchAll(/_([^_]+)_/g)) {
+      span.append(text.slice(last, m.index).replace(/_/g, ''));
+      const em = document.createElement('em');
+      em.textContent = m[1];
+      span.append(em);
+      last = m.index + m[0].length;
+    }
+    let rest = text.slice(last).replace(/_/g, '');  // the other half of a pair is in another sentence
+    if (rest === '.' && /[.!?…]$/.test(span.textContent)) rest = '';  // tts-edge.py's added full stop
+    span.append(rest);
   }
 
   function openChapter(item) {
@@ -876,7 +914,7 @@
   }
 
   // A slow glide the eye can follow, ending with the previous lines still on screen
-  const SCROLL_MS = 1200, SCROLL_AT = 0.25;
+  const SCROLL_MS = 1200, SCROLL_AT = 0.05;
   let scrollAnim = null;
   function stopScrollAnim() {
     if (scrollAnim) cancelAnimationFrame(scrollAnim.frame);
