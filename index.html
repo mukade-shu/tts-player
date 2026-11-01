@@ -851,7 +851,7 @@
     curIdx = i;
     doc.spans[i].classList.add('cur');
     placeAccent();
-    if (follow && !audio.paused && !inView(i)) { scrollToSentence(i, true); flashBar(); }
+    if (follow && !audio.paused && !inView(i)) { scrollToSentence(i, true); flashBar(SCROLL_MS + 1000); }
   }
 
   // the bar beside the lines of the spoken sentence, however many lines it wraps to on this screen
@@ -875,12 +875,29 @@
     return rects[0].top >= box.top && rects[rects.length - 1].bottom <= box.bottom;
   }
 
+  // A slow glide the eye can follow, ending with the previous lines still on screen
+  const SCROLL_MS = 1200, SCROLL_AT = 0.25;
+  let scrollAnim = null;
+  function stopScrollAnim() {
+    if (scrollAnim) cancelAnimationFrame(scrollAnim.frame);
+    scrollAnim = null;
+  }
   function scrollToSentence(i, smooth) {
     const span = doc && doc.spans[i];
     if (!span) return;
-    const top = rScroll.scrollTop + span.getBoundingClientRect().top - rScroll.getBoundingClientRect().top
-      - rScroll.clientHeight * 0.08;
-    rScroll.scrollTo({ top: Math.max(0, top), behavior: smooth ? 'smooth' : 'auto' });
+    stopScrollAnim();
+    const to = Math.max(0, rScroll.scrollTop + span.getBoundingClientRect().top - rScroll.getBoundingClientRect().top
+      - rScroll.clientHeight * SCROLL_AT);
+    if (!smooth) { rScroll.scrollTop = to; return; }
+    const anim = scrollAnim = { from: rScroll.scrollTop, to, start: performance.now() };
+    const step = now => {
+      if (scrollAnim !== anim) return;
+      const x = Math.min(1, (now - anim.start) / SCROLL_MS);
+      const eased = x < 0.5 ? 2 * x * x : 1 - (-2 * x + 2) ** 2 / 2;
+      rScroll.scrollTop = anim.from + (anim.to - anim.from) * eased;
+      if (x < 1) anim.frame = requestAnimationFrame(step); else scrollAnim = null;
+    };
+    anim.frame = requestAnimationFrame(step);
   }
 
   // first sentence visible at the top of the screen
@@ -897,6 +914,7 @@
 
   // scrolling by hand stops following the voice until "Back to audio"
   function stopFollowing() {
+    stopScrollAnim();
     follow = false;
     rFollow.hidden = audio.paused;
     closeMenus();
@@ -907,7 +925,7 @@
     follow = true;
     rFollow.hidden = true;
     scrollToSentence(curIdx, true);
-    flashBar();
+    flashBar(SCROLL_MS + 1000);
   });
   window.addEventListener('resize', placeAccent);
   // text reflows after fonts load, on rotation, when a scrollbar appears … → keep the bar on its lines
@@ -1146,7 +1164,9 @@
     const before = hidden ? document.querySelector('.reader-bar').offsetHeight : 0;
     readerEl.classList.toggle('bars-hidden', hidden);
     const height = before || document.querySelector('.reader-bar').offsetHeight;
-    rScroll.scrollTop += hidden ? -height : height;  // the text area grows upwards: keep the words where they are
+    const delta = hidden ? -height : height;
+    rScroll.scrollTop += delta;  // the text area grows upwards: keep the words where they are
+    if (scrollAnim) { scrollAnim.from += delta; scrollAnim.to += delta; }
     placeAccent();
   }
   function wakeBars() {
@@ -1167,10 +1187,10 @@
 
   // the page just moved: show where the voice is for a moment, also in hold mode
   let flashTimer = null;
-  function flashBar() {
+  function flashBar(ms = 1500) {
     readerEl.classList.add('flash-bar');
     clearTimeout(flashTimer);
-    flashTimer = setTimeout(() => readerEl.classList.remove('flash-bar'), 1500);
+    flashTimer = setTimeout(() => readerEl.classList.remove('flash-bar'), ms);
   }
   function setPeek(on) { readerEl.classList.toggle('peek', on); if (on) placeAccent(); }
   function endHold() {
