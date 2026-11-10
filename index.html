@@ -115,6 +115,8 @@
     .library-item.done .lib-title, .library-item.done .lib-date { opacity: 0.5; }
     .lib-archive { background: none; border: 1px solid var(--border); color: var(--text-muted); border-radius: 6px; padding: 3px 7px; font-size: 10px; font-family: inherit; cursor: pointer; flex-shrink: 0; }
     .lib-archive:hover { color: var(--text); border-color: var(--text-muted); }
+    .library-item.chapter { padding-left: 32px; }
+    .lib-chapters { background: none; border: 0; color: var(--text-muted); font-size: 18px; width: 32px; height: 32px; margin: -8px -6px; cursor: pointer; flex-shrink: 0; font-family: inherit; }
     .library-section { padding: 10px 16px; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer; border-bottom: 1px solid var(--border); background: var(--bg); user-select: none; }
     .library-empty { padding: 24px 16px; text-align: center; color: var(--text-muted); font-size: 12px; }
 
@@ -1503,13 +1505,24 @@
     activeLibItem = null;
     if (!libraryItems.length) { emptyMsg('No files yet'); return; }
 
-    // library.json is kept newest-first by tts-edge.py (parts stay in 1/2/3 order);
-    // finished files sink below unfinished ones, archived files go into a collapsed section
+    // library.json is kept newest-first by tts-edge.py (parts stay in 1/2/3 order); a book's chapters
+    // make one row where its first chapter stands. Finished entries sink below unfinished ones,
+    // archived ones go into a collapsed section
     const done = getSet(DONE_KEY), archived = getSet(ARCHIVE_KEY);
-    const live = libraryItems.filter(i => !archived.has(i.filename));
-    const inArchive = libraryItems.filter(i => archived.has(i.filename));
-    live.filter(i => !done.has(i.filename)).forEach(i => libraryList.appendChild(libraryRow(i, false, false)));
-    live.filter(i => done.has(i.filename)).forEach(i => libraryList.appendChild(libraryRow(i, true, false)));
+    const entries = [], seen = new Set();
+    libraryItems.forEach(i => {
+      const book = bookOf(i);
+      if (!book) return entries.push([i]);
+      if (seen.has(book)) return;
+      seen.add(book);
+      entries.push(chaptersOf(i));
+    });
+    const all = (items, set) => items.every(i => set.has(i.filename));
+    const row = (items, isDone, isArchived) => items.length > 1 ? bookRow(items, isDone, isArchived) : [libraryRow(items[0], isDone, isArchived)];
+    const live = entries.filter(e => !all(e, archived));
+    const inArchive = entries.filter(e => all(e, archived));
+    live.filter(e => !all(e, done)).forEach(e => row(e, false, false).forEach(li => libraryList.appendChild(li)));
+    live.filter(e => all(e, done)).forEach(e => row(e, true, false).forEach(li => libraryList.appendChild(li)));
 
     if (inArchive.length) {
       const head = document.createElement('li');
@@ -1517,8 +1530,56 @@
       head.textContent = (archiveOpen ? '▾ ' : '▸ ') + 'Archive (' + inArchive.length + ')';
       head.addEventListener('click', () => { archiveOpen = !archiveOpen; renderLibrary(); });
       libraryList.appendChild(head);
-      if (archiveOpen) inArchive.forEach(i => libraryList.appendChild(libraryRow(i, done.has(i.filename), true)));
+      if (archiveOpen) inArchive.forEach(e => row(e, all(e, done), true).forEach(li => libraryList.appendChild(li)));
     }
+  }
+
+  // One row per book: tapping picks the chapter to continue (the last one with a saved position,
+  // else the first unplayed one); ▸ lists the chapters
+  const openBooks = new Set();
+  function bookRow(chapters, isDone, isArchived) {
+    const book = bookOf(chapters[0]), done = getSet(DONE_KEY);
+    const playing = chapters.find(c => c.filename === currentKey);
+    const resumed = chapters.filter(c => getPos(c.filename) && !done.has(c.filename)).pop();
+    const next = playing || resumed || chapters.find(c => !done.has(c.filename)) || chapters[0];
+    const label = c => (c.title || c.filename).slice(book.length).replace(/^\s*—\s*/, '');
+
+    const li = libraryRow(next, isDone, isArchived);
+    li.dataset.title = book;
+    li.querySelector('.lib-title').textContent = book;
+    const author = (chapters.find(c => c.author) || {}).author;
+    const played = chapters.filter(c => done.has(c.filename)).length;
+    const pos = getPos(next.filename);
+    li.querySelector('.lib-date').textContent = [author, chapters.length + ' chapters', isDone ? '✓ Played'
+      : (played ? played + ' played · ' : '') + 'Next: ' + label(next) + (pos && pos.d ? ' · ' + pct(pos.t, pos.d) : '')].filter(Boolean).join(' · ');
+
+    const toggle = document.createElement('button');
+    toggle.className = 'lib-chapters';
+    toggle.textContent = openBooks.has(book) ? '▾' : '▸';
+    toggle.setAttribute('aria-label', 'Chapters');
+    toggle.addEventListener('click', e => {
+      e.stopPropagation();
+      openBooks.has(book) ? openBooks.delete(book) : openBooks.add(book);
+      renderLibrary();
+    });
+    li.insertBefore(toggle, li.querySelector('.lib-archive'));
+    const archiveBtn = li.querySelector('.lib-archive');
+    archiveBtn.replaceWith(archiveBtn.cloneNode(true));  // the whole book moves, not one chapter
+    li.querySelector('.lib-archive').addEventListener('click', e => {
+      e.stopPropagation();
+      chapters.forEach(c => setFlag(ARCHIVE_KEY, c.filename, !isArchived));
+      renderLibrary();
+    });
+
+    if (!openBooks.has(book)) return [li];
+    return [li].concat(chapters.map(c => {
+      const ch = libraryRow(c, done.has(c.filename), isArchived);
+      ch.classList.add('chapter');
+      ch.dataset.title = c.title || c.filename;
+      ch.querySelector('.lib-title').textContent = label(c);
+      ch.querySelector('.lib-archive').remove();
+      return ch;
+    }));
   }
 
   function libraryRow(item, isDone, isArchived) {
