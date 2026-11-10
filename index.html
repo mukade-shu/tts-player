@@ -279,11 +279,24 @@
     .memo-box textarea { width: 100%; min-height: 110px; background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 10px; font-size: 16px; font-family: inherit; resize: vertical; }
     .memo-actions { display: flex; gap: 8px; justify-content: flex-end; }
     .toast[hidden] { display: none; }
+    /* Vertical Japanese (Aa → Writing, per device): columns right to left, the page scrolls sideways */
+    #reader.vertical .reader-scroll { writing-mode: vertical-rl; overflow-x: auto; overflow-y: hidden; touch-action: pan-x; }
+    #reader.vertical .reader-text { max-width: none; height: 100%; margin: 0; padding: 28px 32px 28px 40vw; }
+    #reader.vertical .reader-text p { margin: 0 0 0 0.6em; }
+    #reader.vertical .reader-text h2, #reader.vertical .reader-text h3, #reader.vertical .reader-text h4 { margin: 0 0.8em 0 1.4em; }
+    #reader.vertical .r-fig { margin: 0 1.4em; }
+    #reader.vertical .r-fig img { max-width: none; max-height: 70vh; width: auto; }
+    #reader.vertical .reader-text .s.bm, #reader.vertical .reader-text .s.memo { text-underline-offset: 6px; }
+    #reader.vertical .r-accent { left: auto; top: 10px; width: auto; height: 4px; transition: left 0.25s, width 0.25s, opacity 0.2s; }
+    #reader.vertical .r-next { margin: 0 2.5em 0 0; }
+    .tcy { -webkit-text-combine: horizontal; text-combine-upright: all; }
 
     /* Mobile */
     @media (max-width: 600px) {
       .reader-text { padding: 20px 20px 40vh; }
       .r-accent { left: 6px; width: 3px; }
+      #reader.vertical .reader-text { padding: 20px 22px 20px 40vw; }
+      #reader.vertical .r-accent { left: auto; top: 6px; width: auto; height: 3px; }
       .r-controls { gap: 4px; padding: 6px 8px 10px; }
       .r-controls .r-btn { padding: 0 6px; }
       body { overflow: auto; }
@@ -790,6 +803,7 @@
 
   function renderText(item, data) {
     rText.textContent = '';
+    tcy = data.lang === 'ja';
     rText.lang = data.lang || '';
     const times = [], spans = [], heads = [];
     const gap = data.lang === 'ja' ? '' : ' ';
@@ -820,6 +834,7 @@
     }
     rText.appendChild(rAccent);
     doc = { item, lang: data.lang, times, spans, heads };
+    setWriting();
     markBookmarks();
   }
 
@@ -842,12 +857,29 @@
     return fig;
   }
 
+  // Japanese: 1–3 half-width digits stand upright in one cell when the text is vertical (縦中横);
+  // horizontal text is unaffected
+  let tcy = false;
+  function appendText(el, text) {
+    if (!tcy) { el.append(text); return; }
+    const parts = text.split(/(\d{1,3}(?!\d))/);
+    for (let k = 0; k < parts.length; k++) {
+      if (!parts[k]) continue;
+      if (k % 2 && !/\d/.test(parts[k - 1].slice(-1))) {
+        const u = document.createElement('span');
+        u.className = 'tcy';
+        u.textContent = parts[k];
+        el.append(u);
+      } else el.append(parts[k]);
+    }
+  }
+
   // Markdown italics survive in clipped text as _Title_: show them as real italics
   function setSentenceText(span, text) {
     let last = 0, m;
     const pairs = /_([^_]+)_/g;
     while ((m = pairs.exec(text))) {
-      span.append(text.slice(last, m.index).replace(/_/g, ''));
+      appendText(span, text.slice(last, m.index).replace(/_/g, ''));
       const em = document.createElement('em');
       em.textContent = m[1];
       span.append(em);
@@ -855,7 +887,7 @@
     }
     let rest = text.slice(last).replace(/_/g, '');  // the other half of a pair is in another sentence
     if (rest === '.' && /[.!?…]$/.test(span.textContent)) rest = '';  // tts-edge.py's added full stop
-    span.append(rest);
+    appendText(span, rest);
   }
 
   function openChapter(item) {
@@ -896,13 +928,29 @@
     if (follow && !audio.paused && !inView(i)) { scrollToSentence(i, true); flashBar(SCROLL_MS + 1000); }
   }
 
+  // vertical Japanese: the same logic on the other axis (columns run right to left)
+  function isVertical() { return readerEl.classList.contains('vertical'); }
+  function setWriting() { readerEl.classList.toggle('vertical', view.dir === 'v' && !!doc && doc.lang === 'ja'); }
+
   // the bar beside the lines of the spoken sentence, however many lines it wraps to on this screen
+  // (vertical: above the columns)
   function placeAccent() {
     const span = doc && doc.spans[curIdx];
     const rects = span ? span.getClientRects() : [];
     rAccent.hidden = !rects.length;
     if (!rects.length) return;
     const base = rText.getBoundingClientRect();
+    if (isVertical()) {
+      let l = Infinity, r = -Infinity;
+      for (let k = 0; k < rects.length; k++) { l = Math.min(l, rects[k].left); r = Math.max(r, rects[k].right); }
+      rAccent.style.top = '';
+      rAccent.style.height = '';
+      rAccent.style.left = (l - base.left) + 'px';
+      rAccent.style.width = (r - l) + 'px';
+      return;
+    }
+    rAccent.style.left = '';
+    rAccent.style.width = '';
     const top = rects[0].top - base.top;
     rAccent.style.top = top + 'px';
     rAccent.style.height = (rects[rects.length - 1].bottom - base.top - top) + 'px';
@@ -914,6 +962,7 @@
     const rects = doc && doc.spans[i] ? doc.spans[i].getClientRects() : [];
     if (!rects.length) return true;
     const box = rScroll.getBoundingClientRect();
+    if (isVertical()) return rects[0].right <= box.right && rects[rects.length - 1].left >= box.left;
     return rects[0].top >= box.top && rects[rects.length - 1].bottom <= box.bottom;
   }
 
@@ -928,15 +977,18 @@
     const span = doc && doc.spans[i];
     if (!span) return;
     stopScrollAnim();
-    const to = Math.max(0, rScroll.scrollTop + span.getBoundingClientRect().top - rScroll.getBoundingClientRect().top
-      - rScroll.clientHeight * SCROLL_AT);
-    if (!smooth) { rScroll.scrollTop = to; return; }
-    const anim = scrollAnim = { from: rScroll.scrollTop, to, start: performance.now() };
+    const v = isVertical(), prop = v ? 'scrollLeft' : 'scrollTop';
+    const to = v  // vertical: the sentence's first column goes near the right edge (scrollLeft runs negative)
+      ? rScroll.scrollLeft + span.getBoundingClientRect().right - rScroll.getBoundingClientRect().right + rScroll.clientWidth * SCROLL_AT
+      : Math.max(0, rScroll.scrollTop + span.getBoundingClientRect().top - rScroll.getBoundingClientRect().top
+        - rScroll.clientHeight * SCROLL_AT);
+    if (!smooth) { rScroll[prop] = to; return; }
+    const anim = scrollAnim = { from: rScroll[prop], to, prop, start: performance.now() };
     const step = now => {
       if (scrollAnim !== anim) return;
       const x = Math.min(1, (now - anim.start) / SCROLL_MS);
       const eased = x < 0.5 ? 2 * x * x : 1 - (-2 * x + 2) ** 2 / 2;
-      rScroll.scrollTop = anim.from + (anim.to - anim.from) * eased;
+      rScroll[anim.prop] = anim.from + (anim.to - anim.from) * eased;
       if (x < 1) anim.frame = requestAnimationFrame(step); else scrollAnim = null;
     };
     anim.frame = requestAnimationFrame(step);
@@ -945,11 +997,12 @@
   // first sentence visible at the top of the screen
   function topSentence() {
     if (!doc || !doc.spans.length) return 0;
-    const edge = rScroll.getBoundingClientRect().top + 8;
+    const v = isVertical(), box = rScroll.getBoundingClientRect();
+    const edge = v ? box.right - 8 : box.top + 8;
     let lo = 0, hi = doc.spans.length - 1;
     while (lo < hi) {
-      const mid = (lo + hi) >> 1;
-      if (doc.spans[mid].getBoundingClientRect().bottom > edge) hi = mid; else lo = mid + 1;
+      const mid = (lo + hi) >> 1, r = doc.spans[mid].getBoundingClientRect();
+      if (v ? r.left < edge : r.bottom > edge) hi = mid; else lo = mid + 1;
     }
     return lo;
   }
@@ -1207,6 +1260,11 @@
     readerEl.classList.toggle('bars-hidden', hidden);
     const height = before || document.querySelector('.reader-bar').offsetHeight;
     const delta = hidden ? -height : height;
+    if (isVertical()) {  // columns get longer or shorter: keep the voice on screen instead
+      placeAccent();
+      if (follow && curIdx >= 0 && !inView(curIdx)) scrollToSentence(curIdx, false);
+      return;
+    }
     rScroll.scrollTop += delta;  // the text area grows upwards: keep the words where they are
     if (scrollAnim) { scrollAnim.from += delta; scrollAnim.to += delta; }
     placeAccent();
@@ -1317,6 +1375,7 @@
     sans:  "-apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Segoe UI', sans-serif",
     serif: "'Iowan Old Style', 'Hiragino Mincho ProN', 'Yu Mincho', Georgia, serif",
   };
+  let topLeft = 0;  // sentence at the top of the page before a display change
   let view = Object.assign({ theme: 'dark', size: window.innerWidth < 600 ? 18 : 20, lh: 1.75, font: 'serif' }, loadJSON(VIEW_KEY, {}));
   function applyView() {
     if (view.theme === 'dark') delete document.documentElement.dataset.theme;
@@ -1327,6 +1386,14 @@
     rText.style.setProperty('--r-lh', view.lh);
     rText.style.setProperty('--r-font', FONTS[view.font] || FONTS.serif);
     saveJSON(VIEW_KEY, view);
+    const wasVertical = isVertical();
+    setWriting();
+    if (doc && wasVertical !== isVertical()) {  // horizontal ↔ vertical: stay at the same sentence
+      const at = follow && curIdx >= 0 ? curIdx : topLeft;
+      placeAccent();
+      scrollToSentence(at, false);
+      return;
+    }
     placeAccent();
     if (follow && !audio.paused && !inView(curIdx)) scrollToSentence(curIdx, false);  // text reflowed: keep the voice in view
   }
@@ -1340,7 +1407,7 @@
       const b = document.createElement('button');
       b.textContent = label;
       if (value === current) b.className = 'on';
-      b.addEventListener('click', () => { set(value); applyView(); redraw(); });
+      b.addEventListener('click', () => { topLeft = topSentence(); set(value); applyView(); redraw(); });
       row.appendChild(b);
     });
     rSheet.appendChild(h);
@@ -1363,6 +1430,7 @@
     segRow('Highlight', [['show', 'Always'], ['hold', 'Hold to show']], view.bar || 'show', v => { view.bar = v; });
     segRow('Line spacing', [[1.5, 'Tight'], [1.75, 'Normal'], [2.05, 'Loose']], view.lh, v => { view.lh = v; });
     segRow('Font', [['serif', 'Serif'], ['sans', 'Sans']], view.font, v => { view.font = v; });
+    if (doc && doc.lang === 'ja') segRow('Writing', [['h', 'Horizontal'], ['v', 'Vertical']], view.dir || 'h', v => { view.dir = v; });
     const sh = document.createElement('h3');
     sh.textContent = 'Sync between devices';
     const sp = document.createElement('p');
